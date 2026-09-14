@@ -1,0 +1,12 @@
+{
+    "java.configuration.runtimes": [
+        {
+            "name": "JavaSE-11",
+            "path": "C:\\Program Files\\Java\\jdk-11.0.32.1",
+            "default": true
+        }
+    ],
+    "java.project.referencedLibraries": [
+        "lib/**/*.jar"
+    ]
+}
