@@ -3,6 +3,7 @@ package model;
 import java.math.BigDecimal;
 
 public class EvaluationDetailModel {
+
     private int evaluationDetailId;
     private int evaluationId;
     private int criteriaId;
@@ -12,27 +13,67 @@ public class EvaluationDetailModel {
     private BigDecimal score;
     private String comment;
 
-    public int getEvaluationDetailId() { return evaluationDetailId; }
-    public void setEvaluationDetailId(int evaluationDetailId) { this.evaluationDetailId = evaluationDetailId; }
+    public int getEvaluationDetailId() {
+        return evaluationDetailId;
+    }
 
-    public int getEvaluationId() { return evaluationId; }
-    public void setEvaluationId(int evaluationId) { this.evaluationId = evaluationId; }
+    public void setEvaluationDetailId(int evaluationDetailId) {
+        this.evaluationDetailId = evaluationDetailId;
+    }
 
-    public int getCriteriaId() { return criteriaId; }
-    public void setCriteriaId(int criteriaId) { this.criteriaId = criteriaId; }
+    public int getEvaluationId() {
+        return evaluationId;
+    }
 
-    public String getCriteriaName() { return criteriaName; }
-    public void setCriteriaName(String criteriaName) { this.criteriaName = criteriaName; }
+    public void setEvaluationId(int evaluationId) {
+        this.evaluationId = evaluationId;
+    }
 
-    public BigDecimal getMaxScore() { return maxScore; }
-    public void setMaxScore(BigDecimal maxScore) { this.maxScore = maxScore; }
+    public int getCriteriaId() {
+        return criteriaId;
+    }
 
-    public BigDecimal getWeight() { return weight; }
-    public void setWeight(BigDecimal weight) { this.weight = weight; }
+    public void setCriteriaId(int criteriaId) {
+        this.criteriaId = criteriaId;
+    }
 
-    public BigDecimal getScore() { return score; }
-    public void setScore(BigDecimal score) { this.score = score; }
+    public String getCriteriaName() {
+        return criteriaName;
+    }
 
-    public String getComment() { return comment; }
-    public void setComment(String comment) { this.comment = comment; }
+    public void setCriteriaName(String criteriaName) {
+        this.criteriaName = criteriaName;
+    }
+
+    public BigDecimal getMaxScore() {
+        return maxScore;
+    }
+
+    public void setMaxScore(BigDecimal maxScore) {
+        this.maxScore = maxScore;
+    }
+
+    public BigDecimal getWeight() {
+        return weight;
+    }
+
+    public void setWeight(BigDecimal weight) {
+        this.weight = weight;
+    }
+
+    public BigDecimal getScore() {
+        return score;
+    }
+
+    public void setScore(BigDecimal score) {
+        this.score = score;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
 }

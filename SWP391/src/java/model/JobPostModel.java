@@ -5,6 +5,7 @@ import java.sql.Date;
 import java.sql.Timestamp;
 
 public class JobPostModel {
+
     private int jobPostId;
     private String title;
     private String description;
@@ -22,51 +23,131 @@ public class JobPostModel {
     private String createdByName;
     private int applyCount;
 
-    public int getJobPostId() { return jobPostId; }
-    public void setJobPostId(int jobPostId) { this.jobPostId = jobPostId; }
+    public int getJobPostId() {
+        return jobPostId;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public void setJobPostId(int jobPostId) {
+        this.jobPostId = jobPostId;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getCategory() { return category; }
-    public void setCategory(String category) { this.category = category; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public String getPosition() { return position; }
-    public void setPosition(String position) { this.position = position; }
+    public String getDescription() {
+        return description;
+    }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public BigDecimal getOfferMin() { return offerMin; }
-    public void setOfferMin(BigDecimal offerMin) { this.offerMin = offerMin; }
+    public String getCategory() {
+        return category;
+    }
 
-    public BigDecimal getOfferMax() { return offerMax; }
-    public void setOfferMax(BigDecimal offerMax) { this.offerMax = offerMax; }
+    public void setCategory(String category) {
+        this.category = category;
+    }
 
-    public Integer getNumberExp() { return numberExp; }
-    public void setNumberExp(Integer numberExp) { this.numberExp = numberExp; }
+    public String getPosition() {
+        return position;
+    }
 
-    public boolean isVisible() { return visible; }
-    public void setVisible(boolean visible) { this.visible = visible; }
+    public void setPosition(String position) {
+        this.position = position;
+    }
 
-    public String getTypeJob() { return typeJob; }
-    public void setTypeJob(String typeJob) { this.typeJob = typeJob; }
+    public String getLocation() {
+        return location;
+    }
 
-    public Date getDeadline() { return deadline; }
-    public void setDeadline(Date deadline) { this.deadline = deadline; }
+    public void setLocation(String location) {
+        this.location = location;
+    }
 
-    public Timestamp getDayCreate() { return dayCreate; }
-    public void setDayCreate(Timestamp dayCreate) { this.dayCreate = dayCreate; }
+    public BigDecimal getOfferMin() {
+        return offerMin;
+    }
 
-    public Integer getCreatedBy() { return createdBy; }
-    public void setCreatedBy(Integer createdBy) { this.createdBy = createdBy; }
+    public void setOfferMin(BigDecimal offerMin) {
+        this.offerMin = offerMin;
+    }
 
-    public String getCreatedByName() { return createdByName; }
-    public void setCreatedByName(String createdByName) { this.createdByName = createdByName; }
+    public BigDecimal getOfferMax() {
+        return offerMax;
+    }
 
-    public int getApplyCount() { return applyCount; }
-    public void setApplyCount(int applyCount) { this.applyCount = applyCount; }
+    public void setOfferMax(BigDecimal offerMax) {
+        this.offerMax = offerMax;
+    }
+
+    public Integer getNumberExp() {
+        return numberExp;
+    }
+
+    public void setNumberExp(Integer numberExp) {
+        this.numberExp = numberExp;
+    }
+
+    public boolean isVisible() {
+        return visible;
+    }
+
+    public void setVisible(boolean visible) {
+        this.visible = visible;
+    }
+
+    public String getTypeJob() {
+        return typeJob;
+    }
+
+    public void setTypeJob(String typeJob) {
+        this.typeJob = typeJob;
+    }
+
+    public Date getDeadline() {
+        return deadline;
+    }
+
+    public void setDeadline(Date deadline) {
+        this.deadline = deadline;
+    }
+
+    public Timestamp getDayCreate() {
+        return dayCreate;
+    }
+
+    public void setDayCreate(Timestamp dayCreate) {
+        this.dayCreate = dayCreate;
+    }
+
+    public Integer getCreatedBy() {
+        return createdBy;
+    }
+
+    public void setCreatedBy(Integer createdBy) {
+        this.createdBy = createdBy;
+    }
+
+    public String getCreatedByName() {
+        return createdByName;
+    }
+
+    public void setCreatedByName(String createdByName) {
+        this.createdByName = createdByName;
+    }
+
+    public int getApplyCount() {
+        return applyCount;
+    }
+
+    public void setApplyCount(int applyCount) {
+        this.applyCount = applyCount;
+    }
 }

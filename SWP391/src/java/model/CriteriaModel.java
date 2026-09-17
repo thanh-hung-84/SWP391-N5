@@ -3,6 +3,7 @@ package model;
 import java.math.BigDecimal;
 
 public class CriteriaModel {
+
     private int criteriaId;
     private int baremId;
     private String criteriaName;
@@ -15,30 +16,75 @@ public class CriteriaModel {
     private BigDecimal enteredScore;
     private String enteredComment;
 
-    public int getCriteriaId() { return criteriaId; }
-    public void setCriteriaId(int criteriaId) { this.criteriaId = criteriaId; }
+    public int getCriteriaId() {
+        return criteriaId;
+    }
 
-    public int getBaremId() { return baremId; }
-    public void setBaremId(int baremId) { this.baremId = baremId; }
+    public void setCriteriaId(int criteriaId) {
+        this.criteriaId = criteriaId;
+    }
 
-    public String getCriteriaName() { return criteriaName; }
-    public void setCriteriaName(String criteriaName) { this.criteriaName = criteriaName; }
+    public int getBaremId() {
+        return baremId;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public void setBaremId(int baremId) {
+        this.baremId = baremId;
+    }
 
-    public BigDecimal getMaxScore() { return maxScore; }
-    public void setMaxScore(BigDecimal maxScore) { this.maxScore = maxScore; }
+    public String getCriteriaName() {
+        return criteriaName;
+    }
 
-    public BigDecimal getWeight() { return weight; }
-    public void setWeight(BigDecimal weight) { this.weight = weight; }
+    public void setCriteriaName(String criteriaName) {
+        this.criteriaName = criteriaName;
+    }
 
-    public int getDisplayOrder() { return displayOrder; }
-    public void setDisplayOrder(int displayOrder) { this.displayOrder = displayOrder; }
+    public String getDescription() {
+        return description;
+    }
 
-    public BigDecimal getEnteredScore() { return enteredScore; }
-    public void setEnteredScore(BigDecimal enteredScore) { this.enteredScore = enteredScore; }
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
-    public String getEnteredComment() { return enteredComment; }
-    public void setEnteredComment(String enteredComment) { this.enteredComment = enteredComment; }
+    public BigDecimal getMaxScore() {
+        return maxScore;
+    }
+
+    public void setMaxScore(BigDecimal maxScore) {
+        this.maxScore = maxScore;
+    }
+
+    public BigDecimal getWeight() {
+        return weight;
+    }
+
+    public void setWeight(BigDecimal weight) {
+        this.weight = weight;
+    }
+
+    public int getDisplayOrder() {
+        return displayOrder;
+    }
+
+    public void setDisplayOrder(int displayOrder) {
+        this.displayOrder = displayOrder;
+    }
+
+    public BigDecimal getEnteredScore() {
+        return enteredScore;
+    }
+
+    public void setEnteredScore(BigDecimal enteredScore) {
+        this.enteredScore = enteredScore;
+    }
+
+    public String getEnteredComment() {
+        return enteredComment;
+    }
+
+    public void setEnteredComment(String enteredComment) {
+        this.enteredComment = enteredComment;
+    }
 }
