@@ -28,4 +28,20 @@ public class DBContext {
             System.err.println("Close connection failed: " + e.getMessage());
         }
     }
+
+    public static void main(String[] args) {
+        DBContext db = new DBContext();
+        try {
+            if (db.c != null && !db.c.isClosed()) {
+                System.out.println("==========================================");
+                System.out.println(">>> KET NOI SQL SERVER THANH CONG! <<<");
+                System.out.println("Database: HRM_LoTrinhNS da san sang.");
+                System.out.println("==========================================");
+            } else {
+                System.out.println(">>> KET NOI THAT BAI: Bien connection c bi null! <<<");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
