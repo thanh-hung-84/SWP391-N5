@@ -1,1979 +1,969 @@
+/*
+    SWP391 - Full database initialization and sample data
 
+    Safe behavior:
+    - Creates database SWP391 only when it does not exist.
+    - Creates missing tables and indexes only.
+    - Inserts sample rows only when their natural key does not exist.
+    - Does not drop the database or delete existing business data.
 
-/* ============================================================
-   1. CREATE DATABASE
-   ============================================================ */
-CREATE DATABASE SWP391;
+    Test password for all seeded accounts: 123456
+*/
+
+USE master;
+GO
+
+IF DB_ID(N'SWP391') IS NULL
+BEGIN
+    CREATE DATABASE SWP391;
+END;
 GO
 
 USE SWP391;
 GO
 
-/* ============================================================
-   2. ROLES
-   ============================================================ */
-
-CREATE TABLE Roles
-(
-    RoleID INT IDENTITY(1,1) PRIMARY KEY,
-
-    RoleName NVARCHAR(50) NOT NULL,
-
-    CONSTRAINT UQ_Roles_RoleName
-        UNIQUE (RoleName)
-);
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
 GO
 
-
-INSERT INTO Roles (RoleName)
-VALUES
-    (N'Admin'),
-    (N'HR Staff'),
-    (N'Manager'),
-    (N'Candidate');
-GO
-
-
 /* ============================================================
-   3. ADMIN
+   CORE ACCOUNTS AND EMPLOYEES
    ============================================================ */
 
-CREATE TABLE Admin
-(
-    AdminID INT IDENTITY(1,1) PRIMARY KEY,
-
-    Username NVARCHAR(100) NOT NULL,
-
-    PasswordHash NVARCHAR(255) NOT NULL,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_Admin_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_Admin_Username
-        UNIQUE (Username)
-);
+IF OBJECT_ID(N'dbo.Roles', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Roles (
+        RoleID INT IDENTITY(1,1) PRIMARY KEY,
+        RoleName NVARCHAR(50) NOT NULL,
+        CONSTRAINT UQ_Roles_RoleName UNIQUE (RoleName)
+    );
+END;
 GO
 
-
-/* ============================================================
-   4. ADMIN ROLE
-   Admin <-> Roles
-   ============================================================ */
-
-CREATE TABLE Role_Table
-(
-    AdminID INT NOT NULL,
-
-    RoleID INT NOT NULL,
-
-    CONSTRAINT PK_Role_Table
-        PRIMARY KEY (AdminID, RoleID),
-
-    CONSTRAINT FK_RoleTable_Admin
-        FOREIGN KEY (AdminID)
-        REFERENCES Admin(AdminID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_RoleTable_Role
-        FOREIGN KEY (RoleID)
-        REFERENCES Roles(RoleID)
-        ON DELETE CASCADE
-);
+IF OBJECT_ID(N'dbo.Admin', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Admin (
+        AdminID INT IDENTITY(1,1) PRIMARY KEY,
+        Username NVARCHAR(100) NOT NULL,
+        PasswordHash NVARCHAR(255) NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Admin_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_Admin_Username UNIQUE (Username)
+    );
+END;
 GO
 
-
-/* ============================================================
-   5. CANDIDATE
-   Người dùng ứng tuyển
-   ============================================================ */
-
-CREATE TABLE Candidate
-(
-    CandidateID INT IDENTITY(1,1) PRIMARY KEY,
-
-    CandidateName NVARCHAR(100) NOT NULL,
-
-    Address NVARCHAR(255),
-
-    Email NVARCHAR(100) NOT NULL,
-
-    PhoneNumber VARCHAR(15) NOT NULL,
-
-    Nationality NVARCHAR(50),
-
-    PasswordHash NVARCHAR(255) NOT NULL,
-
-    Avatar NVARCHAR(255),
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_Candidate_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    IsActive BIT NOT NULL
-        CONSTRAINT DF_Candidate_IsActive
-        DEFAULT 1,
-
-    CONSTRAINT UQ_Candidate_Email
-        UNIQUE (Email),
-
-    CONSTRAINT UQ_Candidate_Phone
-        UNIQUE (PhoneNumber)
-);
+IF OBJECT_ID(N'dbo.Role_Table', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Role_Table (
+        AdminID INT NOT NULL,
+        RoleID INT NOT NULL,
+        CONSTRAINT PK_Role_Table PRIMARY KEY (AdminID, RoleID),
+        CONSTRAINT FK_RoleTable_Admin FOREIGN KEY (AdminID)
+            REFERENCES dbo.Admin(AdminID) ON DELETE CASCADE,
+        CONSTRAINT FK_RoleTable_Role FOREIGN KEY (RoleID)
+            REFERENCES dbo.Roles(RoleID) ON DELETE CASCADE
+    );
+END;
 GO
 
-
-/* ============================================================
-   6. EMPLOYEE
-   Candidate sau khi được tuyển sẽ trở thành Employee
-
-   Candidate 1 ---- 0..1 Employee
-   Employee ------ 1 Role
-   ============================================================ */
-
-CREATE TABLE Employee
-(
-    EmployeeID INT IDENTITY(1,1) PRIMARY KEY,
-
-    CandidateID INT NOT NULL,
-
-    RoleID INT NOT NULL,
-
-    EmployeeCode VARCHAR(20) NOT NULL,
-
-    HireDate DATE NOT NULL,
-
-    Department NVARCHAR(100),
-
-    Position NVARCHAR(100),
-
-    Salary DECIMAL(18,2),
-
-    IsActive BIT NOT NULL
-        CONSTRAINT DF_Employee_IsActive
-        DEFAULT 1,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_Employee_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_Employee_Candidate
-        UNIQUE (CandidateID),
-
-    CONSTRAINT UQ_Employee_Code
-        UNIQUE (EmployeeCode),
-
-    CONSTRAINT FK_Employee_Candidate
-        FOREIGN KEY (CandidateID)
-        REFERENCES Candidate(CandidateID),
-
-    CONSTRAINT FK_Employee_Role
-        FOREIGN KEY (RoleID)
-        REFERENCES Roles(RoleID),
-
-    CONSTRAINT CK_Employee_Salary
-        CHECK
-        (
-            Salary IS NULL
-            OR Salary >= 0
-        )
-);
+IF OBJECT_ID(N'dbo.Candidate', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Candidate (
+        CandidateID INT IDENTITY(1,1) PRIMARY KEY,
+        CandidateName NVARCHAR(100) NOT NULL,
+        Address NVARCHAR(255) NULL,
+        Email NVARCHAR(100) NOT NULL,
+        PhoneNumber VARCHAR(15) NOT NULL,
+        Nationality NVARCHAR(50) NULL,
+        PasswordHash NVARCHAR(255) NOT NULL,
+        Avatar NVARCHAR(255) NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Candidate_CreatedAt DEFAULT (SYSDATETIME()),
+        IsActive BIT NOT NULL
+            CONSTRAINT DF_Candidate_IsActive DEFAULT (1),
+        CONSTRAINT UQ_Candidate_Email UNIQUE (Email),
+        CONSTRAINT UQ_Candidate_Phone UNIQUE (PhoneNumber)
+    );
+END;
 GO
 
-
-/* ============================================================
-   7. EMPLOYEE POSITION HISTORY
-   Lưu lịch sử chức vụ / phòng ban / thăng tiến
-
-   Ví dụ:
-
-   Employee #1
-       HR Staff
-       2026-09-16 -> 2027-09-01
-
-       Manager
-       2027-09-01 -> NULL
-   ============================================================ */
-
-CREATE TABLE EmployeePositionHistory
-(
-    HistoryID INT IDENTITY(1,1) PRIMARY KEY,
-
-    EmployeeID INT NOT NULL,
-
-    RoleID INT NOT NULL,
-
-    Position NVARCHAR(100),
-
-    Department NVARCHAR(100),
-
-    StartDate DATE NOT NULL,
-
-    EndDate DATE NULL,
-
-    Note NVARCHAR(500),
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_EmployeePositionHistory_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT FK_PositionHistory_Employee
-        FOREIGN KEY (EmployeeID)
-        REFERENCES Employee(EmployeeID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_PositionHistory_Role
-        FOREIGN KEY (RoleID)
-        REFERENCES Roles(RoleID)
-);
+IF OBJECT_ID(N'dbo.Employee', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Employee (
+        EmployeeID INT IDENTITY(1,1) PRIMARY KEY,
+        CandidateID INT NOT NULL,
+        RoleID INT NOT NULL,
+        EmployeeCode VARCHAR(20) NOT NULL,
+        HireDate DATE NOT NULL,
+        Department NVARCHAR(100) NULL,
+        Position NVARCHAR(100) NULL,
+        Salary DECIMAL(18,2) NULL,
+        IsActive BIT NOT NULL
+            CONSTRAINT DF_Employee_IsActive DEFAULT (1),
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Employee_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_Employee_Candidate UNIQUE (CandidateID),
+        CONSTRAINT UQ_Employee_Code UNIQUE (EmployeeCode),
+        CONSTRAINT FK_Employee_Candidate FOREIGN KEY (CandidateID)
+            REFERENCES dbo.Candidate(CandidateID),
+        CONSTRAINT FK_Employee_Role FOREIGN KEY (RoleID)
+            REFERENCES dbo.Roles(RoleID),
+        CONSTRAINT CK_Employee_Salary CHECK (Salary IS NULL OR Salary >= 0)
+    );
+END;
 GO
 
+IF OBJECT_ID(N'dbo.EmployeePositionHistory', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.EmployeePositionHistory (
+        HistoryID INT IDENTITY(1,1) PRIMARY KEY,
+        EmployeeID INT NOT NULL,
+        RoleID INT NOT NULL,
+        Position NVARCHAR(100) NULL,
+        Department NVARCHAR(100) NULL,
+        StartDate DATE NOT NULL,
+        EndDate DATE NULL,
+        Note NVARCHAR(500) NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_EmployeePositionHistory_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT FK_PositionHistory_Employee FOREIGN KEY (EmployeeID)
+            REFERENCES dbo.Employee(EmployeeID) ON DELETE CASCADE,
+        CONSTRAINT FK_PositionHistory_Role FOREIGN KEY (RoleID)
+            REFERENCES dbo.Roles(RoleID),
+        CONSTRAINT CK_PositionHistory_Dates CHECK (EndDate IS NULL OR EndDate >= StartDate)
+    );
+END;
+GO
 
 /* ============================================================
-   8. CV
+   RECRUITMENT
    ============================================================ */
 
-CREATE TABLE CV
-(
-    CVID INT IDENTITY(1,1) PRIMARY KEY,
+IF OBJECT_ID(N'dbo.CV', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.CV (
+        CVID INT IDENTITY(1,1) PRIMARY KEY,
+        CandidateID INT NOT NULL,
+        FullName NVARCHAR(100) NULL,
+        Address NVARCHAR(255) NULL,
+        Email NVARCHAR(100) NULL,
+        Position NVARCHAR(100) NULL,
+        NumberExp INT NULL,
+        Education NVARCHAR(255) NULL,
+        Field NVARCHAR(100) NULL,
+        CurrentSalary DECIMAL(18,2) NULL,
+        Birthday DATE NULL,
+        Nationality NVARCHAR(50) NULL,
+        Gender NVARCHAR(10) NULL,
+        FileData NVARCHAR(255) NULL,
+        DayCreate DATETIME2(0) NOT NULL
+            CONSTRAINT DF_CV_DayCreate DEFAULT (SYSDATETIME()),
+        CONSTRAINT CK_CV_NumberExp CHECK (NumberExp IS NULL OR NumberExp >= 0),
+        CONSTRAINT CK_CV_CurrentSalary CHECK (CurrentSalary IS NULL OR CurrentSalary >= 0),
+        CONSTRAINT FK_CV_Candidate FOREIGN KEY (CandidateID)
+            REFERENCES dbo.Candidate(CandidateID) ON DELETE CASCADE
+    );
+END;
+GO
 
-    CandidateID INT NOT NULL,
-
-    FullName NVARCHAR(100),
-
-    Address NVARCHAR(255),
-
-    Email NVARCHAR(100),
-
-    Position NVARCHAR(100),
-
-    NumberExp INT,
-
-    Education NVARCHAR(255),
-
-    Field NVARCHAR(100),
-
-    CurrentSalary DECIMAL(18,2),
-
-    Birthday DATE,
-
-    Nationality NVARCHAR(50),
-
-    Gender NVARCHAR(10),
-
-    FileData NVARCHAR(255),
-
-    DayCreate DATETIME2 NOT NULL
-        CONSTRAINT DF_CV_DayCreate
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT CK_CV_NumberExp
-        CHECK
-        (
-            NumberExp IS NULL
-            OR NumberExp >= 0
+IF OBJECT_ID(N'dbo.JobPost', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.JobPost (
+        JobPostID INT IDENTITY(1,1) PRIMARY KEY,
+        Title NVARCHAR(100) NOT NULL,
+        Description NVARCHAR(MAX) NOT NULL,
+        Category NVARCHAR(100) NOT NULL,
+        Position NVARCHAR(100) NULL,
+        Location NVARCHAR(255) NOT NULL,
+        OfferMin DECIMAL(18,2) NULL,
+        OfferMax DECIMAL(18,2) NULL,
+        NumberExp INT NULL,
+        Visible BIT NOT NULL
+            CONSTRAINT DF_JobPost_Visible DEFAULT (1),
+        TypeJob NVARCHAR(100) NULL,
+        Deadline DATE NULL,
+        DayCreate DATETIME2(0) NOT NULL
+            CONSTRAINT DF_JobPost_DayCreate DEFAULT (SYSDATETIME()),
+        CreatedBy INT NULL,
+        CONSTRAINT CK_JobPost_Salary CHECK (
+            OfferMin IS NULL OR OfferMax IS NULL OR OfferMin <= OfferMax
         ),
+        CONSTRAINT CK_JobPost_NumberExp CHECK (NumberExp IS NULL OR NumberExp >= 0),
+        CONSTRAINT FK_JobPost_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID) ON DELETE SET NULL
+    );
+END;
+GO
 
-    CONSTRAINT CK_CV_CurrentSalary
-        CHECK
-        (
-            CurrentSalary IS NULL
-            OR CurrentSalary >= 0
+IF OBJECT_ID(N'dbo.Apply', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Apply (
+        ApplyID INT IDENTITY(1,1) PRIMARY KEY,
+        JobPostID INT NOT NULL,
+        CandidateID INT NOT NULL,
+        CVID INT NOT NULL,
+        Status NVARCHAR(50) NOT NULL
+            CONSTRAINT DF_Apply_Status DEFAULT (N'Pending'),
+        Note NVARCHAR(500) NULL,
+        FinalResult NVARCHAR(50) NULL,
+        ConclusionNote NVARCHAR(MAX) NULL,
+        ConclusionBy INT NULL,
+        ConclusionDate DATETIME2(0) NULL,
+        DayCreate DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Apply_DayCreate DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_Apply_Candidate_Job UNIQUE (CandidateID, JobPostID),
+        CONSTRAINT FK_Apply_JobPost FOREIGN KEY (JobPostID)
+            REFERENCES dbo.JobPost(JobPostID) ON DELETE CASCADE,
+        CONSTRAINT FK_Apply_Candidate FOREIGN KEY (CandidateID)
+            REFERENCES dbo.Candidate(CandidateID),
+        CONSTRAINT FK_Apply_CV FOREIGN KEY (CVID)
+            REFERENCES dbo.CV(CVID),
+        CONSTRAINT FK_Apply_ConclusionBy FOREIGN KEY (ConclusionBy)
+            REFERENCES dbo.Employee(EmployeeID) ON DELETE SET NULL
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.SavedJob', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.SavedJob (
+        SavedJobID INT IDENTITY(1,1) PRIMARY KEY,
+        CandidateID INT NOT NULL,
+        JobPostID INT NOT NULL,
+        DateCreate DATETIME2(0) NOT NULL
+            CONSTRAINT DF_SavedJob_DateCreate DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_SavedJob_Candidate_Job UNIQUE (CandidateID, JobPostID),
+        CONSTRAINT FK_SavedJob_Candidate FOREIGN KEY (CandidateID)
+            REFERENCES dbo.Candidate(CandidateID) ON DELETE CASCADE,
+        CONSTRAINT FK_SavedJob_JobPost FOREIGN KEY (JobPostID)
+            REFERENCES dbo.JobPost(JobPostID) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.Potential', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Potential (
+        PotentialID INT IDENTITY(1,1) PRIMARY KEY,
+        CVID INT NOT NULL,
+        JobPostID INT NOT NULL,
+        CreatedBy INT NULL,
+        Note NVARCHAR(500) NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Potential_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_Potential_CV_Job UNIQUE (CVID, JobPostID),
+        CONSTRAINT FK_Potential_CV FOREIGN KEY (CVID)
+            REFERENCES dbo.CV(CVID) ON DELETE CASCADE,
+        CONSTRAINT FK_Potential_JobPost FOREIGN KEY (JobPostID)
+            REFERENCES dbo.JobPost(JobPostID) ON DELETE CASCADE,
+        CONSTRAINT FK_Potential_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID) ON DELETE SET NULL
+    );
+END;
+GO
+
+/* ============================================================
+   INTERVIEWS AND EVALUATIONS
+   ============================================================ */
+
+IF OBJECT_ID(N'dbo.InterviewBarem', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.InterviewBarem (
+        BaremID INT IDENTITY(1,1) PRIMARY KEY,
+        JobPostID INT NOT NULL,
+        BaremName NVARCHAR(150) NOT NULL,
+        Description NVARCHAR(500) NULL,
+        TotalScore DECIMAL(6,2) NOT NULL
+            CONSTRAINT DF_InterviewBarem_TotalScore DEFAULT (100),
+        CreatedBy INT NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_InterviewBarem_CreatedAt DEFAULT (SYSDATETIME()),
+        IsActive BIT NOT NULL
+            CONSTRAINT DF_InterviewBarem_IsActive DEFAULT (1),
+        CONSTRAINT UQ_InterviewBarem_Job_Name UNIQUE (JobPostID, BaremName),
+        CONSTRAINT CK_InterviewBarem_TotalScore CHECK (TotalScore > 0),
+        CONSTRAINT FK_InterviewBarem_JobPost FOREIGN KEY (JobPostID)
+            REFERENCES dbo.JobPost(JobPostID) ON DELETE CASCADE,
+        CONSTRAINT FK_InterviewBarem_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.BaremCriteria', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.BaremCriteria (
+        CriteriaID INT IDENTITY(1,1) PRIMARY KEY,
+        BaremID INT NOT NULL,
+        CriteriaName NVARCHAR(150) NOT NULL,
+        Description NVARCHAR(500) NULL,
+        MaxScore DECIMAL(6,2) NOT NULL,
+        Weight DECIMAL(5,2) NOT NULL,
+        DisplayOrder INT NOT NULL
+            CONSTRAINT DF_BaremCriteria_DisplayOrder DEFAULT (1),
+        CONSTRAINT UQ_BaremCriteria_Barem_Name UNIQUE (BaremID, CriteriaName),
+        CONSTRAINT CK_BaremCriteria_MaxScore CHECK (MaxScore > 0),
+        CONSTRAINT CK_BaremCriteria_Weight CHECK (Weight >= 0 AND Weight <= 100),
+        CONSTRAINT CK_BaremCriteria_DisplayOrder CHECK (DisplayOrder > 0),
+        CONSTRAINT FK_BaremCriteria_Barem FOREIGN KEY (BaremID)
+            REFERENCES dbo.InterviewBarem(BaremID) ON DELETE CASCADE
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.Interview', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Interview (
+        InterviewID INT IDENTITY(1,1) PRIMARY KEY,
+        ApplyID INT NOT NULL,
+        BaremID INT NOT NULL,
+        InterviewRound INT NOT NULL,
+        InterviewDate DATE NOT NULL,
+        StartTime TIME(0) NOT NULL,
+        EndTime TIME(0) NULL,
+        InterviewType NVARCHAR(30) NOT NULL,
+        Location NVARCHAR(255) NULL,
+        MeetingLink NVARCHAR(500) NULL,
+        Status NVARCHAR(50) NOT NULL
+            CONSTRAINT DF_Interview_Status DEFAULT (N'Scheduled'),
+        Note NVARCHAR(1000) NULL,
+        CreatedBy INT NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Interview_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_Interview_Apply_Round UNIQUE (ApplyID, InterviewRound),
+        CONSTRAINT CK_Interview_Round CHECK (InterviewRound > 0),
+        CONSTRAINT CK_Interview_Time CHECK (EndTime IS NULL OR EndTime > StartTime),
+        CONSTRAINT CK_Interview_Type CHECK (InterviewType IN (N'Online', N'Offline', N'Phone')),
+        CONSTRAINT FK_Interview_Apply FOREIGN KEY (ApplyID)
+            REFERENCES dbo.Apply(ApplyID) ON DELETE CASCADE,
+        CONSTRAINT FK_Interview_Barem FOREIGN KEY (BaremID)
+            REFERENCES dbo.InterviewBarem(BaremID),
+        CONSTRAINT FK_Interview_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.InterviewParticipant', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.InterviewParticipant (
+        InterviewID INT NOT NULL,
+        EmployeeID INT NOT NULL,
+        ParticipantRole NVARCHAR(50) NULL,
+        IsLeadInterviewer BIT NOT NULL
+            CONSTRAINT DF_InterviewParticipant_IsLead DEFAULT (0),
+        CONSTRAINT PK_InterviewParticipant PRIMARY KEY (InterviewID, EmployeeID),
+        CONSTRAINT FK_InterviewParticipant_Interview FOREIGN KEY (InterviewID)
+            REFERENCES dbo.Interview(InterviewID) ON DELETE CASCADE,
+        CONSTRAINT FK_InterviewParticipant_Employee FOREIGN KEY (EmployeeID)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
+GO
+
+IF OBJECT_ID(N'dbo.InterviewEvaluation', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.InterviewEvaluation (
+        EvaluationID INT IDENTITY(1,1) PRIMARY KEY,
+        InterviewID INT NOT NULL,
+        InterviewerID INT NOT NULL,
+        TotalScore DECIMAL(7,2) NULL,
+        Recommendation NVARCHAR(50) NULL,
+        Comment NVARCHAR(MAX) NULL,
+        EvaluatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_InterviewEvaluation_EvaluatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_InterviewEvaluation UNIQUE (InterviewID, InterviewerID),
+        CONSTRAINT CK_InterviewEvaluation_Score CHECK (TotalScore IS NULL OR TotalScore >= 0),
+        CONSTRAINT CK_InterviewEvaluation_Recommendation CHECK (
+            Recommendation IS NULL OR Recommendation IN (N'Pass', N'Consider', N'Fail')
         ),
-
-    CONSTRAINT FK_CV_Candidate
-        FOREIGN KEY (CandidateID)
-        REFERENCES Candidate(CandidateID)
-        ON DELETE CASCADE
-);
+        CONSTRAINT FK_InterviewEvaluation_Interview FOREIGN KEY (InterviewID)
+            REFERENCES dbo.Interview(InterviewID) ON DELETE CASCADE,
+        CONSTRAINT FK_InterviewEvaluation_Interviewer FOREIGN KEY (InterviewerID)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
 GO
 
+IF OBJECT_ID(N'dbo.EvaluationDetail', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.EvaluationDetail (
+        EvaluationDetailID INT IDENTITY(1,1) PRIMARY KEY,
+        EvaluationID INT NOT NULL,
+        CriteriaID INT NOT NULL,
+        Score DECIMAL(7,2) NOT NULL,
+        Comment NVARCHAR(500) NULL,
+        CONSTRAINT UQ_EvaluationDetail UNIQUE (EvaluationID, CriteriaID),
+        CONSTRAINT CK_EvaluationDetail_Score CHECK (Score >= 0),
+        CONSTRAINT FK_EvaluationDetail_Evaluation FOREIGN KEY (EvaluationID)
+            REFERENCES dbo.InterviewEvaluation(EvaluationID) ON DELETE CASCADE,
+        CONSTRAINT FK_EvaluationDetail_Criteria FOREIGN KEY (CriteriaID)
+            REFERENCES dbo.BaremCriteria(CriteriaID)
+    );
+END;
+GO
 
 /* ============================================================
-   9. JOB POST
-   Không còn EmployerID
+   NOTIFICATIONS AND PASSWORD RESET
    ============================================================ */
 
-CREATE TABLE JobPost
-(
-    JobPostID INT IDENTITY(1,1) PRIMARY KEY,
+IF OBJECT_ID(N'dbo.Notification', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.Notification (
+        NotificationID INT IDENTITY(1,1) PRIMARY KEY,
+        SenderRole NVARCHAR(50) NOT NULL,
+        ReceiverRole NVARCHAR(50) NOT NULL,
+        ReceiverID INT NOT NULL,
+        Message NVARCHAR(MAX) NOT NULL,
+        SentDate DATETIME2(0) NOT NULL
+            CONSTRAINT DF_Notification_SentDate DEFAULT (SYSDATETIME()),
+        IsRead BIT NOT NULL
+            CONSTRAINT DF_Notification_IsRead DEFAULT (0)
+    );
+END;
+GO
 
-    Title NVARCHAR(100) NOT NULL,
+IF OBJECT_ID(N'dbo.PasswordResetToken', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.PasswordResetToken (
+        Id BIGINT IDENTITY(1,1) PRIMARY KEY,
+        Email NVARCHAR(255) NOT NULL,
+        TokenHash NVARCHAR(255) NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_PasswordReset_CreatedAt DEFAULT (SYSUTCDATETIME()),
+        ExpiresAt DATETIME2(0) NOT NULL,
+        Used BIT NOT NULL
+            CONSTRAINT DF_PasswordReset_Used DEFAULT (0),
+        Attempts INT NOT NULL
+            CONSTRAINT DF_PasswordReset_Attempts DEFAULT (0),
+        Role NVARCHAR(50) NOT NULL,
+        CONSTRAINT CK_PasswordReset_Attempts CHECK (Attempts >= 0),
+        CONSTRAINT CK_PasswordReset_Expires CHECK (ExpiresAt > CreatedAt)
+    );
+END;
+GO
 
-    Description NVARCHAR(MAX) NOT NULL,
+/* ============================================================
+   EMPLOYEE PROFILE DOCUMENTS
+   ============================================================ */
 
-    Category NVARCHAR(100) NOT NULL,
+IF OBJECT_ID(N'dbo.ProfileDocumentType', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProfileDocumentType (
+        DocumentTypeID INT IDENTITY(1,1) PRIMARY KEY,
+        DocumentName NVARCHAR(150) NOT NULL,
+        Description NVARCHAR(500) NULL,
+        IsActive BIT NOT NULL
+            CONSTRAINT DF_ProfileDocumentType_IsActive DEFAULT (1),
+        CreatedBy INT NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_ProfileDocumentType_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_ProfileDocumentType_DocumentName UNIQUE (DocumentName),
+        CONSTRAINT FK_ProfileDocumentType_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
+GO
 
-    Position NVARCHAR(100),
-
-    Location NVARCHAR(255) NOT NULL,
-
-    OfferMin DECIMAL(18,2),
-
-    OfferMax DECIMAL(18,2),
-
-    NumberExp INT,
-
-    Visible BIT NOT NULL
-        CONSTRAINT DF_JobPost_Visible
-        DEFAULT 1,
-
-    TypeJob NVARCHAR(100),
-
-    Deadline DATE,
-
-    DayCreate DATETIME2 NOT NULL
-        CONSTRAINT DF_JobPost_DayCreate
-        DEFAULT SYSDATETIME(),
-
-    CreatedBy INT NULL,
-
-    CONSTRAINT CK_JobPost_Salary
-        CHECK
-        (
-            OfferMin IS NULL
-            OR OfferMax IS NULL
-            OR OfferMin <= OfferMax
+IF OBJECT_ID(N'dbo.EmployeeProfileDocument', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.EmployeeProfileDocument (
+        EmployeeDocumentID INT IDENTITY(1,1) PRIMARY KEY,
+        EmployeeID INT NOT NULL,
+        DocumentTypeID INT NOT NULL,
+        IsRequired BIT NOT NULL
+            CONSTRAINT DF_EmployeeProfileDocument_IsRequired DEFAULT (1),
+        DueDate DATE NULL,
+        Status VARCHAR(20) NOT NULL
+            CONSTRAINT DF_EmployeeProfileDocument_Status DEFAULT ('Pending'),
+        OriginalFileName NVARCHAR(255) NULL,
+        ContentType VARCHAR(100) NULL,
+        FileData VARBINARY(MAX) NULL,
+        EmployeeNote NVARCHAR(1000) NULL,
+        ReviewNote NVARCHAR(1000) NULL,
+        SubmittedAt DATETIME2(0) NULL,
+        ReviewedBy INT NULL,
+        ReviewedAt DATETIME2(0) NULL,
+        CreatedBy INT NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_EmployeeProfileDocument_CreatedAt DEFAULT (SYSDATETIME()),
+        UpdatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_EmployeeProfileDocument_UpdatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT UQ_EmployeeProfileDocument_Employee_Type UNIQUE (EmployeeID, DocumentTypeID),
+        CONSTRAINT CK_EmployeeProfileDocument_Status CHECK (
+            Status IN ('Pending', 'Submitted', 'Approved', 'Rejected')
         ),
-
-    CONSTRAINT CK_JobPost_NumberExp
-        CHECK
-        (
-            NumberExp IS NULL
-            OR NumberExp >= 0
+        CONSTRAINT CK_EmployeeProfileDocument_Review CHECK (
+            (Status IN ('Pending', 'Submitted') AND ReviewedBy IS NULL AND ReviewedAt IS NULL)
+            OR (Status IN ('Approved', 'Rejected') AND ReviewedBy IS NOT NULL AND ReviewedAt IS NOT NULL)
         ),
-
-    CONSTRAINT FK_JobPost_CreatedBy
-        FOREIGN KEY (CreatedBy)
-        REFERENCES Employee(EmployeeID)
-        ON DELETE SET NULL
-);
-GO
-
-
-/* ============================================================
-   10. APPLY
-   Candidate ứng tuyển JobPost
-   ============================================================ */
-
-CREATE TABLE Apply
-(
-    ApplyID INT IDENTITY(1,1) PRIMARY KEY,
-
-    JobPostID INT NOT NULL,
-
-    CandidateID INT NOT NULL,
-
-    CVID INT NOT NULL,
-
-    Status NVARCHAR(50) NOT NULL
-        CONSTRAINT DF_Apply_Status
-        DEFAULT N'Pending',
-
-    Note NVARCHAR(500),
-
-    FinalResult NVARCHAR(50),
-
-    ConclusionNote NVARCHAR(MAX),
-
-    ConclusionBy INT NULL,
-
-    ConclusionDate DATETIME2 NULL,
-
-    DayCreate DATETIME2 NOT NULL
-        CONSTRAINT DF_Apply_DayCreate
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_Apply_Candidate_Job
-        UNIQUE (CandidateID, JobPostID),
-
-    CONSTRAINT FK_Apply_JobPost
-        FOREIGN KEY (JobPostID)
-        REFERENCES JobPost(JobPostID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_Apply_Candidate
-        FOREIGN KEY (CandidateID)
-        REFERENCES Candidate(CandidateID),
-
-    CONSTRAINT FK_Apply_CV
-        FOREIGN KEY (CVID)
-        REFERENCES CV(CVID),
-
-    CONSTRAINT FK_Apply_ConclusionBy
-        FOREIGN KEY (ConclusionBy)
-        REFERENCES Employee(EmployeeID)
-        ON DELETE SET NULL
-);
-GO
-
-
-/* ============================================================
-   11. SAVED JOB
-   ============================================================ */
-
-CREATE TABLE SavedJob
-(
-    SavedJobID INT IDENTITY(1,1) PRIMARY KEY,
-
-    CandidateID INT NOT NULL,
-
-    JobPostID INT NOT NULL,
-
-    DateCreate DATETIME2 NOT NULL
-        CONSTRAINT DF_SavedJob_DateCreate
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_SavedJob_Candidate_Job
-        UNIQUE (CandidateID, JobPostID),
-
-    CONSTRAINT FK_SavedJob_Candidate
-        FOREIGN KEY (CandidateID)
-        REFERENCES Candidate(CandidateID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_SavedJob_JobPost
-        FOREIGN KEY (JobPostID)
-        REFERENCES JobPost(JobPostID)
-        ON DELETE CASCADE
-);
-GO
-
-
-/* ============================================================
-   12. POTENTIAL
-   HR đánh dấu CV tiềm năng
-   ============================================================ */
-
-CREATE TABLE Potential
-(
-    PotentialID INT IDENTITY(1,1) PRIMARY KEY,
-
-    CVID INT NOT NULL,
-
-    JobPostID INT NOT NULL,
-
-    CreatedBy INT NULL,
-
-    Note NVARCHAR(500),
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_Potential_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_Potential_CV_Job
-        UNIQUE (CVID, JobPostID),
-
-    CONSTRAINT FK_Potential_CV
-        FOREIGN KEY (CVID)
-        REFERENCES CV(CVID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_Potential_JobPost
-        FOREIGN KEY (JobPostID)
-        REFERENCES JobPost(JobPostID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_Potential_CreatedBy
-        FOREIGN KEY (CreatedBy)
-        REFERENCES Employee(EmployeeID)
-        ON DELETE SET NULL
-);
-GO
-
-
-/* ============================================================
-   13. INTERVIEW BAREM
-   ============================================================ */
-
-CREATE TABLE InterviewBarem
-(
-    BaremID INT IDENTITY(1,1) PRIMARY KEY,
-
-    JobPostID INT NOT NULL,
-
-    BaremName NVARCHAR(150) NOT NULL,
-
-    Description NVARCHAR(500),
-
-    TotalScore DECIMAL(5,2) NOT NULL
-        CONSTRAINT DF_InterviewBarem_TotalScore
-        DEFAULT 100,
-
-    CreatedBy INT NOT NULL,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_InterviewBarem_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    IsActive BIT NOT NULL
-        CONSTRAINT DF_InterviewBarem_IsActive
-        DEFAULT 1,
-
-    CONSTRAINT CK_InterviewBarem_TotalScore
-        CHECK (TotalScore > 0),
-
-    CONSTRAINT FK_InterviewBarem_JobPost
-        FOREIGN KEY (JobPostID)
-        REFERENCES JobPost(JobPostID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_InterviewBarem_CreatedBy
-        FOREIGN KEY (CreatedBy)
-        REFERENCES Employee(EmployeeID)
-);
-GO
-
-
-/* ============================================================
-   14. BAREM CRITERIA
-   ============================================================ */
-
-CREATE TABLE BaremCriteria
-(
-    CriteriaID INT IDENTITY(1,1) PRIMARY KEY,
-
-    BaremID INT NOT NULL,
-
-    CriteriaName NVARCHAR(150) NOT NULL,
-
-    Description NVARCHAR(500),
-
-    MaxScore DECIMAL(5,2) NOT NULL,
-
-    Weight DECIMAL(5,2) NOT NULL,
-
-    DisplayOrder INT NOT NULL
-        CONSTRAINT DF_BaremCriteria_DisplayOrder
-        DEFAULT 1,
-
-    CONSTRAINT CK_BaremCriteria_MaxScore
-        CHECK (MaxScore > 0),
-
-    CONSTRAINT CK_BaremCriteria_Weight
-        CHECK
-        (
-            Weight >= 0
-            AND Weight <= 100
+        CONSTRAINT CK_EmployeeProfileDocument_File CHECK (
+            (Status = 'Pending' AND OriginalFileName IS NULL AND ContentType IS NULL
+                AND FileData IS NULL AND SubmittedAt IS NULL)
+            OR (Status IN ('Submitted', 'Approved', 'Rejected')
+                AND OriginalFileName IS NOT NULL AND ContentType IS NOT NULL
+                AND FileData IS NOT NULL AND SubmittedAt IS NOT NULL)
         ),
-
-    CONSTRAINT CK_BaremCriteria_DisplayOrder
-        CHECK (DisplayOrder > 0),
-
-    CONSTRAINT FK_BaremCriteria_Barem
-        FOREIGN KEY (BaremID)
-        REFERENCES InterviewBarem(BaremID)
-        ON DELETE CASCADE
-);
-GO
-
-
-/* ============================================================
-   15. INTERVIEW
-   ============================================================ */
-
-CREATE TABLE Interview
-(
-    InterviewID INT IDENTITY(1,1) PRIMARY KEY,
-
-    ApplyID INT NOT NULL,
-
-    BaremID INT NOT NULL,
-
-    InterviewRound INT NOT NULL,
-
-    InterviewDate DATE NOT NULL,
-
-    StartTime TIME NOT NULL,
-
-    EndTime TIME NULL,
-
-    InterviewType NVARCHAR(30) NOT NULL,
-
-    Location NVARCHAR(255),
-
-    MeetingLink NVARCHAR(500),
-
-    Status NVARCHAR(50) NOT NULL
-        CONSTRAINT DF_Interview_Status
-        DEFAULT N'Scheduled',
-
-    Note NVARCHAR(1000),
-
-    CreatedBy INT NOT NULL,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_Interview_CreatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_Interview_Apply_Round
-        UNIQUE (ApplyID, InterviewRound),
-
-    CONSTRAINT CK_Interview_Round
-        CHECK (InterviewRound > 0),
-
-    CONSTRAINT CK_Interview_Time
-        CHECK
-        (
-            EndTime IS NULL
-            OR EndTime > StartTime
+        CONSTRAINT CK_EmployeeProfileDocument_FileSize CHECK (
+            FileData IS NULL OR DATALENGTH(FileData) <= 10485760
         ),
-
-    CONSTRAINT CK_Interview_Type
-        CHECK
-        (
-            InterviewType IN
-            (
-                N'Online',
-                N'Offline',
-                N'Phone'
-            )
+        CONSTRAINT CK_EmployeeProfileDocument_ContentType CHECK (
+            ContentType IS NULL OR ContentType IN ('application/pdf', 'image/jpeg', 'image/png')
         ),
-
-    CONSTRAINT FK_Interview_Apply
-        FOREIGN KEY (ApplyID)
-        REFERENCES Apply(ApplyID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_Interview_Barem
-        FOREIGN KEY (BaremID)
-        REFERENCES InterviewBarem(BaremID),
-
-    CONSTRAINT FK_Interview_CreatedBy
-        FOREIGN KEY (CreatedBy)
-        REFERENCES Employee(EmployeeID)
-);
-GO
-
-
-/* ============================================================
-   16. INTERVIEW PARTICIPANT
-   ============================================================ */
-
-CREATE TABLE InterviewParticipant
-(
-    InterviewID INT NOT NULL,
-
-    EmployeeID INT NOT NULL,
-
-    ParticipantRole NVARCHAR(50),
-
-    IsLeadInterviewer BIT NOT NULL
-        CONSTRAINT DF_InterviewParticipant_IsLead
-        DEFAULT 0,
-
-    CONSTRAINT PK_InterviewParticipant
-        PRIMARY KEY (InterviewID, EmployeeID),
-
-    CONSTRAINT FK_InterviewParticipant_Interview
-        FOREIGN KEY (InterviewID)
-        REFERENCES Interview(InterviewID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_InterviewParticipant_Employee
-        FOREIGN KEY (EmployeeID)
-        REFERENCES Employee(EmployeeID)
-);
-GO
-
-
-/* ============================================================
-   17. INTERVIEW EVALUATION
-   ============================================================ */
-
-CREATE TABLE InterviewEvaluation
-(
-    EvaluationID INT IDENTITY(1,1) PRIMARY KEY,
-
-    InterviewID INT NOT NULL,
-
-    InterviewerID INT NOT NULL,
-
-    TotalScore DECIMAL(6,2),
-
-    Recommendation NVARCHAR(50),
-
-    Comment NVARCHAR(MAX),
-
-    EvaluatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_InterviewEvaluation_EvaluatedAt
-        DEFAULT SYSDATETIME(),
-
-    CONSTRAINT UQ_InterviewEvaluation
-        UNIQUE (InterviewID, InterviewerID),
-
-    CONSTRAINT CK_InterviewEvaluation_Score
-        CHECK
-        (
-            TotalScore IS NULL
-            OR TotalScore >= 0
+        CONSTRAINT CK_EmployeeProfileDocument_RejectionNote CHECK (
+            Status <> 'Rejected' OR NULLIF(LTRIM(RTRIM(ReviewNote)), '') IS NOT NULL
         ),
-
-    CONSTRAINT FK_InterviewEvaluation_Interview
-        FOREIGN KEY (InterviewID)
-        REFERENCES Interview(InterviewID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_InterviewEvaluation_Interviewer
-        FOREIGN KEY (InterviewerID)
-        REFERENCES Employee(EmployeeID)
-);
+        CONSTRAINT FK_EmployeeProfileDocument_Employee FOREIGN KEY (EmployeeID)
+            REFERENCES dbo.Employee(EmployeeID),
+        CONSTRAINT FK_EmployeeProfileDocument_DocumentType FOREIGN KEY (DocumentTypeID)
+            REFERENCES dbo.ProfileDocumentType(DocumentTypeID),
+        CONSTRAINT FK_EmployeeProfileDocument_ReviewedBy FOREIGN KEY (ReviewedBy)
+            REFERENCES dbo.Employee(EmployeeID),
+        CONSTRAINT FK_EmployeeProfileDocument_CreatedBy FOREIGN KEY (CreatedBy)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
 GO
 
+IF OBJECT_ID(N'dbo.ProfileDocumentHistory', N'U') IS NULL
+BEGIN
+    CREATE TABLE dbo.ProfileDocumentHistory (
+        HistoryID INT IDENTITY(1,1) PRIMARY KEY,
+        EmployeeDocumentID INT NOT NULL,
+        Action VARCHAR(30) NOT NULL,
+        FromStatus VARCHAR(20) NULL,
+        ToStatus VARCHAR(20) NOT NULL,
+        Comment NVARCHAR(1000) NULL,
+        ActionBy INT NOT NULL,
+        CreatedAt DATETIME2(0) NOT NULL
+            CONSTRAINT DF_ProfileDocumentHistory_CreatedAt DEFAULT (SYSDATETIME()),
+        CONSTRAINT CK_ProfileDocumentHistory_Action CHECK (
+            Action IN ('Assigned', 'Submitted', 'Resubmitted', 'Approved', 'Rejected')
+        ),
+        CONSTRAINT CK_ProfileDocumentHistory_FromStatus CHECK (
+            FromStatus IS NULL OR FromStatus IN ('Pending', 'Submitted', 'Approved', 'Rejected')
+        ),
+        CONSTRAINT CK_ProfileDocumentHistory_ToStatus CHECK (
+            ToStatus IN ('Pending', 'Submitted', 'Approved', 'Rejected')
+        ),
+        CONSTRAINT CK_ProfileDocumentHistory_Transition CHECK (
+            (Action = 'Assigned' AND FromStatus IS NULL AND ToStatus = 'Pending')
+            OR (Action = 'Submitted' AND FromStatus = 'Pending' AND ToStatus = 'Submitted')
+            OR (Action = 'Resubmitted' AND FromStatus = 'Rejected' AND ToStatus = 'Submitted')
+            OR (Action = 'Approved' AND FromStatus = 'Submitted' AND ToStatus = 'Approved')
+            OR (Action = 'Rejected' AND FromStatus = 'Submitted' AND ToStatus = 'Rejected')
+        ),
+        CONSTRAINT FK_ProfileDocumentHistory_Document FOREIGN KEY (EmployeeDocumentID)
+            REFERENCES dbo.EmployeeProfileDocument(EmployeeDocumentID),
+        CONSTRAINT FK_ProfileDocumentHistory_ActionBy FOREIGN KEY (ActionBy)
+            REFERENCES dbo.Employee(EmployeeID)
+    );
+END;
+GO
 
 /* ============================================================
-   18. EVALUATION DETAIL
+   INDEXES
    ============================================================ */
 
-CREATE TABLE EvaluationDetail
-(
-    EvaluationDetailID INT IDENTITY(1,1) PRIMARY KEY,
-
-    EvaluationID INT NOT NULL,
-
-    CriteriaID INT NOT NULL,
-
-    Score DECIMAL(6,2) NOT NULL,
-
-    Comment NVARCHAR(500),
-
-    CONSTRAINT UQ_EvaluationDetail
-        UNIQUE (EvaluationID, CriteriaID),
-
-    CONSTRAINT CK_EvaluationDetail_Score
-        CHECK (Score >= 0),
-
-    CONSTRAINT FK_EvaluationDetail_Evaluation
-        FOREIGN KEY (EvaluationID)
-        REFERENCES InterviewEvaluation(EvaluationID)
-        ON DELETE CASCADE,
-
-    CONSTRAINT FK_EvaluationDetail_Criteria
-        FOREIGN KEY (CriteriaID)
-        REFERENCES BaremCriteria(CriteriaID)
-);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Employee_Role' AND object_id = OBJECT_ID(N'dbo.Employee'))
+    CREATE INDEX IX_Employee_Role ON dbo.Employee(RoleID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Employee_Department' AND object_id = OBJECT_ID(N'dbo.Employee'))
+    CREATE INDEX IX_Employee_Department ON dbo.Employee(Department);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_EmployeePositionHistory_Employee' AND object_id = OBJECT_ID(N'dbo.EmployeePositionHistory'))
+    CREATE INDEX IX_EmployeePositionHistory_Employee ON dbo.EmployeePositionHistory(EmployeeID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_JobPost_Visible' AND object_id = OBJECT_ID(N'dbo.JobPost'))
+    CREATE INDEX IX_JobPost_Visible ON dbo.JobPost(Visible);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_JobPost_Deadline' AND object_id = OBJECT_ID(N'dbo.JobPost'))
+    CREATE INDEX IX_JobPost_Deadline ON dbo.JobPost(Deadline);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Apply_Candidate' AND object_id = OBJECT_ID(N'dbo.Apply'))
+    CREATE INDEX IX_Apply_Candidate ON dbo.Apply(CandidateID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Apply_JobPost' AND object_id = OBJECT_ID(N'dbo.Apply'))
+    CREATE INDEX IX_Apply_JobPost ON dbo.Apply(JobPostID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Apply_Status' AND object_id = OBJECT_ID(N'dbo.Apply'))
+    CREATE INDEX IX_Apply_Status ON dbo.Apply(Status);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Interview_Date' AND object_id = OBJECT_ID(N'dbo.Interview'))
+    CREATE INDEX IX_Interview_Date ON dbo.Interview(InterviewDate, StartTime);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_InterviewParticipant_Employee' AND object_id = OBJECT_ID(N'dbo.InterviewParticipant'))
+    CREATE INDEX IX_InterviewParticipant_Employee ON dbo.InterviewParticipant(EmployeeID, InterviewID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_InterviewEvaluation_Interviewer' AND object_id = OBJECT_ID(N'dbo.InterviewEvaluation'))
+    CREATE INDEX IX_InterviewEvaluation_Interviewer ON dbo.InterviewEvaluation(InterviewerID);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_PasswordResetToken_Email' AND object_id = OBJECT_ID(N'dbo.PasswordResetToken'))
+    CREATE INDEX IX_PasswordResetToken_Email ON dbo.PasswordResetToken(Email);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_EmployeeProfileDocument_Status' AND object_id = OBJECT_ID(N'dbo.EmployeeProfileDocument'))
+    CREATE INDEX IX_EmployeeProfileDocument_Status ON dbo.EmployeeProfileDocument(Status, DueDate);
+IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_ProfileDocumentHistory_Document_CreatedAt' AND object_id = OBJECT_ID(N'dbo.ProfileDocumentHistory'))
+    CREATE INDEX IX_ProfileDocumentHistory_Document_CreatedAt
+        ON dbo.ProfileDocumentHistory(EmployeeDocumentID, CreatedAt DESC);
 GO
-
 
 /* ============================================================
-   19. NOTIFICATION
+   IDEMPOTENT SAMPLE DATA
    ============================================================ */
 
-CREATE TABLE Notification
-(
-    NotificationID INT IDENTITY(1,1) PRIMARY KEY,
+BEGIN TRY
+    BEGIN TRANSACTION;
 
-    SenderRole NVARCHAR(50) NOT NULL,
+    DECLARE @PasswordHash NVARCHAR(255) = N'EcAbknci4zUp0FPIsk83QGU0ZWU=';
 
-    ReceiverRole NVARCHAR(50) NOT NULL,
+    INSERT INTO dbo.Roles (RoleName)
+    SELECT source.RoleName
+    FROM (VALUES
+        (N'Admin'),
+        (N'HR Staff'),
+        (N'Manager'),
+        (N'Candidate'),
+        (N'Employee')
+    ) AS source(RoleName)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.Roles existing WHERE existing.RoleName = source.RoleName
+    );
 
-    ReceiverID INT NOT NULL,
+    IF NOT EXISTS (SELECT 1 FROM dbo.Admin WHERE Username = N'admin')
+        INSERT INTO dbo.Admin (Username, PasswordHash) VALUES (N'admin', @PasswordHash);
+    ELSE
+        UPDATE dbo.Admin SET PasswordHash = @PasswordHash WHERE Username = N'admin';
 
-    Message NVARCHAR(MAX) NOT NULL,
+    DECLARE @AdminID INT = (SELECT AdminID FROM dbo.Admin WHERE Username = N'admin');
+    DECLARE @AdminRoleID INT = (SELECT RoleID FROM dbo.Roles WHERE RoleName = N'Admin');
+    IF NOT EXISTS (SELECT 1 FROM dbo.Role_Table WHERE AdminID = @AdminID AND RoleID = @AdminRoleID)
+        INSERT INTO dbo.Role_Table (AdminID, RoleID) VALUES (@AdminID, @AdminRoleID);
 
-    SentDate DATETIME2 NOT NULL
-        CONSTRAINT DF_Notification_SentDate
-        DEFAULT SYSDATETIME(),
+    INSERT INTO dbo.Candidate
+        (CandidateName, Address, Email, PhoneNumber, Nationality, PasswordHash, Avatar)
+    SELECT source.CandidateName, source.Address, source.Email, source.PhoneNumber,
+           source.Nationality, @PasswordHash, source.Avatar
+    FROM (VALUES
+        (N'Nguyễn Văn Nam', N'Hà Nội', N'nam@gmail.com', '0911111111', N'Việt Nam', N'avatar1.png'),
+        (N'Trần Thị Hoa', N'Hồ Chí Minh', N'hoa@gmail.com', '0912222222', N'Việt Nam', N'avatar2.png'),
+        (N'Lê Văn Minh', N'Đà Nẵng', N'minh@gmail.com', '0913333333', N'Việt Nam', N'avatar3.png'),
+        (N'Đỗ Gia An', N'Hà Nội', N'an@gmail.com', '0916666666', N'Việt Nam', N'avatar6.png'),
+        (N'Phạm Thị Lan', N'Hải Phòng', N'lan@gmail.com', '0914444444', N'Việt Nam', N'avatar4.png'),
+        (N'Hoàng Văn Tuấn', N'Cần Thơ', N'tuan@gmail.com', '0915555555', N'Việt Nam', N'avatar5.png'),
+        (N'Nguyễn Đức Bình', N'Hà Nội', N'binh@gmail.com', '0917777777', N'Việt Nam', N'avatar7.png')
+    ) AS source(CandidateName, Address, Email, PhoneNumber, Nationality, Avatar)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.Candidate existing
+        WHERE existing.Email = source.Email OR existing.PhoneNumber = source.PhoneNumber
+    );
 
-    IsRead BIT NOT NULL
-        CONSTRAINT DF_Notification_IsRead
-        DEFAULT 0
-);
+    UPDATE dbo.Candidate
+    SET PasswordHash = @PasswordHash, IsActive = 1
+    WHERE Email IN (
+        N'nam@gmail.com', N'hoa@gmail.com', N'minh@gmail.com', N'an@gmail.com',
+        N'lan@gmail.com', N'tuan@gmail.com', N'binh@gmail.com'
+    );
+
+    INSERT INTO dbo.Employee
+        (CandidateID, RoleID, EmployeeCode, HireDate, Department, Position, Salary)
+    SELECT candidate.CandidateID, role.RoleID, source.EmployeeCode, CAST(GETDATE() AS DATE),
+           source.Department, source.Position, source.Salary
+    FROM (VALUES
+        (N'nam@gmail.com', N'HR Staff', 'EMP001', N'Human Resources', N'HR Staff', CAST(1500 AS DECIMAL(18,2))),
+        (N'hoa@gmail.com', N'HR Staff', 'EMP002', N'Human Resources', N'HR Staff', CAST(1400 AS DECIMAL(18,2))),
+        (N'minh@gmail.com', N'Manager', 'EMP003', N'IT', N'Engineering Manager', CAST(3000 AS DECIMAL(18,2))),
+        (N'an@gmail.com', N'Employee', 'EMP004', N'IT', N'Software Engineer', CAST(1800 AS DECIMAL(18,2)))
+    ) AS source(Email, RoleName, EmployeeCode, Department, Position, Salary)
+    JOIN dbo.Candidate candidate ON candidate.Email = source.Email
+    JOIN dbo.Roles role ON role.RoleName = source.RoleName
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.Employee existing
+        WHERE existing.CandidateID = candidate.CandidateID OR existing.EmployeeCode = source.EmployeeCode
+    );
+
+    INSERT INTO dbo.EmployeePositionHistory
+        (EmployeeID, RoleID, Position, Department, StartDate, EndDate, Note)
+    SELECT employee.EmployeeID, employee.RoleID, employee.Position, employee.Department,
+           employee.HireDate, NULL, N'Vị trí ban đầu khi trở thành nhân viên'
+    FROM dbo.Employee employee
+    WHERE employee.EmployeeCode IN ('EMP001', 'EMP002', 'EMP003', 'EMP004')
+      AND NOT EXISTS (
+          SELECT 1 FROM dbo.EmployeePositionHistory history
+          WHERE history.EmployeeID = employee.EmployeeID AND history.EndDate IS NULL
+      );
+
+    INSERT INTO dbo.CV
+        (CandidateID, FullName, Address, Email, Position, NumberExp, Education,
+         Field, CurrentSalary, Birthday, Nationality, Gender, FileData)
+    SELECT candidate.CandidateID, source.FullName, source.Address, source.Email,
+           source.Position, source.NumberExp, source.Education, source.Field,
+           source.CurrentSalary, source.Birthday, N'Việt Nam', source.Gender, source.FileData
+    FROM (VALUES
+        (N'lan@gmail.com', N'Phạm Thị Lan', N'Hải Phòng', N'Java Developer', 4,
+         N'Đại học Bách Khoa', N'Công nghệ thông tin', CAST(1700 AS DECIMAL(18,2)),
+         CAST('1994-07-07' AS DATE), N'Nữ', N'cv_lan.pdf'),
+        (N'tuan@gmail.com', N'Hoàng Văn Tuấn', N'Cần Thơ', N'UI/UX Designer', 2,
+         N'Đại học Kiến trúc', N'Thiết kế', CAST(1100 AS DECIMAL(18,2)),
+         CAST('1999-03-15' AS DATE), N'Nam', N'cv_tuan.pdf'),
+        (N'binh@gmail.com', N'Nguyễn Đức Bình', N'Hà Nội', N'HR Staff', 1,
+         N'Đại học Kinh tế', N'Quản trị nhân sự', CAST(900 AS DECIMAL(18,2)),
+         CAST('2000-11-20' AS DATE), N'Nam', N'cv_binh.pdf')
+    ) AS source(Email, FullName, Address, Position, NumberExp, Education, Field,
+                CurrentSalary, Birthday, Gender, FileData)
+    JOIN dbo.Candidate candidate ON candidate.Email = source.Email
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.CV existing
+        WHERE existing.CandidateID = candidate.CandidateID AND existing.Position = source.Position
+    );
+
+    DECLARE @HRID INT = (
+        SELECT employee.EmployeeID
+        FROM dbo.Employee employee
+        JOIN dbo.Candidate candidate ON employee.CandidateID = candidate.CandidateID
+        WHERE candidate.Email = N'nam@gmail.com'
+    );
+    DECLARE @ManagerID INT = (
+        SELECT employee.EmployeeID
+        FROM dbo.Employee employee
+        JOIN dbo.Candidate candidate ON employee.CandidateID = candidate.CandidateID
+        WHERE candidate.Email = N'minh@gmail.com'
+    );
+    DECLARE @EmployeeID INT = (
+        SELECT employee.EmployeeID
+        FROM dbo.Employee employee
+        JOIN dbo.Candidate candidate ON employee.CandidateID = candidate.CandidateID
+        WHERE candidate.Email = N'an@gmail.com'
+    );
+
+    INSERT INTO dbo.JobPost
+        (Title, Description, Category, Position, Location, OfferMin, OfferMax,
+         NumberExp, Visible, TypeJob, Deadline, CreatedBy)
+    SELECT source.Title, source.Description, source.Category, source.Position, source.Location,
+           source.OfferMin, source.OfferMax, source.NumberExp, 1, N'Full-time',
+           DATEADD(DAY, 30, CAST(GETDATE() AS DATE)), @HRID
+    FROM (VALUES
+        (N'Tuyển Java Developer', N'Phát triển và bảo trì hệ thống Java.', N'IT',
+         N'Java Developer', N'Hà Nội, Việt Nam', CAST(1500 AS DECIMAL(18,2)), CAST(2500 AS DECIMAL(18,2)), 2),
+        (N'Tuyển HR Staff', N'Thực hiện tuyển dụng và quản lý hồ sơ nhân sự.', N'Human Resources',
+         N'HR Staff', N'Hà Nội, Việt Nam', CAST(1000 AS DECIMAL(18,2)), CAST(1800 AS DECIMAL(18,2)), 1),
+        (N'Tuyển UI/UX Designer', N'Thiết kế giao diện và trải nghiệm người dùng.', N'Design',
+         N'UI/UX Designer', N'Hà Nội, Việt Nam', CAST(1000 AS DECIMAL(18,2)), CAST(2000 AS DECIMAL(18,2)), 1)
+    ) AS source(Title, Description, Category, Position, Location, OfferMin, OfferMax, NumberExp)
+    WHERE NOT EXISTS (SELECT 1 FROM dbo.JobPost existing WHERE existing.Title = source.Title);
+
+    DECLARE @JavaJobID INT = (SELECT TOP (1) JobPostID FROM dbo.JobPost WHERE Title = N'Tuyển Java Developer');
+    DECLARE @HrJobID INT = (SELECT TOP (1) JobPostID FROM dbo.JobPost WHERE Title = N'Tuyển HR Staff');
+    DECLARE @DesignJobID INT = (SELECT TOP (1) JobPostID FROM dbo.JobPost WHERE Title = N'Tuyển UI/UX Designer');
+    DECLARE @LanID INT = (SELECT CandidateID FROM dbo.Candidate WHERE Email = N'lan@gmail.com');
+    DECLARE @TuanID INT = (SELECT CandidateID FROM dbo.Candidate WHERE Email = N'tuan@gmail.com');
+    DECLARE @BinhID INT = (SELECT CandidateID FROM dbo.Candidate WHERE Email = N'binh@gmail.com');
+    DECLARE @LanCvID INT = (SELECT TOP (1) CVID FROM dbo.CV WHERE CandidateID = @LanID AND Position = N'Java Developer');
+    DECLARE @TuanCvID INT = (SELECT TOP (1) CVID FROM dbo.CV WHERE CandidateID = @TuanID AND Position = N'UI/UX Designer');
+    DECLARE @BinhCvID INT = (SELECT TOP (1) CVID FROM dbo.CV WHERE CandidateID = @BinhID AND Position = N'HR Staff');
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Apply WHERE CandidateID = @LanID AND JobPostID = @JavaJobID)
+        INSERT INTO dbo.Apply (JobPostID, CandidateID, CVID, Status, Note)
+        VALUES (@JavaJobID, @LanID, @LanCvID, N'Interviewing', N'Đang tham gia quy trình phỏng vấn Java Developer');
+    IF NOT EXISTS (SELECT 1 FROM dbo.Apply WHERE CandidateID = @TuanID AND JobPostID = @DesignJobID)
+        INSERT INTO dbo.Apply (JobPostID, CandidateID, CVID, Status, Note)
+        VALUES (@DesignJobID, @TuanID, @TuanCvID, N'Shortlisted', N'Đã qua vòng lọc hồ sơ, sẵn sàng lên lịch');
+    IF NOT EXISTS (SELECT 1 FROM dbo.Apply WHERE CandidateID = @BinhID AND JobPostID = @HrJobID)
+        INSERT INTO dbo.Apply (JobPostID, CandidateID, CVID, Status, Note)
+        VALUES (@HrJobID, @BinhID, @BinhCvID, N'Pending', N'Đang chờ HR sàng lọc');
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.SavedJob WHERE CandidateID = @LanID AND JobPostID = @DesignJobID)
+        INSERT INTO dbo.SavedJob (CandidateID, JobPostID) VALUES (@LanID, @DesignJobID);
+    IF NOT EXISTS (SELECT 1 FROM dbo.SavedJob WHERE CandidateID = @TuanID AND JobPostID = @JavaJobID)
+        INSERT INTO dbo.SavedJob (CandidateID, JobPostID) VALUES (@TuanID, @JavaJobID);
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.Potential WHERE CVID = @LanCvID AND JobPostID = @JavaJobID)
+        INSERT INTO dbo.Potential (CVID, JobPostID, CreatedBy, Note)
+        VALUES (@LanCvID, @JavaJobID, @HRID, N'Ứng viên có kinh nghiệm Java phù hợp');
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.InterviewBarem WHERE JobPostID = @JavaJobID AND BaremName = N'Barem Java Developer')
+        INSERT INTO dbo.InterviewBarem (JobPostID, BaremName, Description, TotalScore, CreatedBy)
+        VALUES (@JavaJobID, N'Barem Java Developer', N'Đánh giá chuyên môn và kỹ năng Java', 100, @HRID);
+    IF NOT EXISTS (SELECT 1 FROM dbo.InterviewBarem WHERE JobPostID = @DesignJobID AND BaremName = N'Barem UI/UX Designer')
+        INSERT INTO dbo.InterviewBarem (JobPostID, BaremName, Description, TotalScore, CreatedBy)
+        VALUES (@DesignJobID, N'Barem UI/UX Designer', N'Đánh giá portfolio và tư duy thiết kế', 100, @HRID);
+
+    DECLARE @JavaBaremID INT = (
+        SELECT BaremID FROM dbo.InterviewBarem
+        WHERE JobPostID = @JavaJobID AND BaremName = N'Barem Java Developer'
+    );
+    DECLARE @DesignBaremID INT = (
+        SELECT BaremID FROM dbo.InterviewBarem
+        WHERE JobPostID = @DesignJobID AND BaremName = N'Barem UI/UX Designer'
+    );
+
+    INSERT INTO dbo.BaremCriteria
+        (BaremID, CriteriaName, Description, MaxScore, Weight, DisplayOrder)
+    SELECT @JavaBaremID, source.CriteriaName, source.Description,
+           source.MaxScore, source.Weight, source.DisplayOrder
+    FROM (VALUES
+        (N'Kiến thức Java', N'Java core, OOP và collection', CAST(30 AS DECIMAL(6,2)), CAST(30 AS DECIMAL(5,2)), 1),
+        (N'Kinh nghiệm thực tế', N'Kinh nghiệm tham gia dự án', CAST(20 AS DECIMAL(6,2)), CAST(20 AS DECIMAL(5,2)), 2),
+        (N'Giải quyết vấn đề', N'Phân tích và xử lý tình huống', CAST(20 AS DECIMAL(6,2)), CAST(20 AS DECIMAL(5,2)), 3),
+        (N'Giao tiếp', N'Trình bày và phối hợp', CAST(15 AS DECIMAL(6,2)), CAST(15 AS DECIMAL(5,2)), 4),
+        (N'Thái độ', N'Tinh thần học hỏi và trách nhiệm', CAST(15 AS DECIMAL(6,2)), CAST(15 AS DECIMAL(5,2)), 5)
+    ) AS source(CriteriaName, Description, MaxScore, Weight, DisplayOrder)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.BaremCriteria existing
+        WHERE existing.BaremID = @JavaBaremID AND existing.CriteriaName = source.CriteriaName
+    );
+
+    INSERT INTO dbo.BaremCriteria
+        (BaremID, CriteriaName, Description, MaxScore, Weight, DisplayOrder)
+    SELECT @DesignBaremID, source.CriteriaName, source.Description,
+           source.MaxScore, source.Weight, source.DisplayOrder
+    FROM (VALUES
+        (N'Portfolio', N'Chất lượng và mức độ phù hợp của portfolio', CAST(40 AS DECIMAL(6,2)), CAST(40 AS DECIMAL(5,2)), 1),
+        (N'Tư duy UX', N'Khả năng nghiên cứu và giải quyết vấn đề người dùng', CAST(35 AS DECIMAL(6,2)), CAST(35 AS DECIMAL(5,2)), 2),
+        (N'Giao tiếp', N'Khả năng giải thích quyết định thiết kế', CAST(25 AS DECIMAL(6,2)), CAST(25 AS DECIMAL(5,2)), 3)
+    ) AS source(CriteriaName, Description, MaxScore, Weight, DisplayOrder)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.BaremCriteria existing
+        WHERE existing.BaremID = @DesignBaremID AND existing.CriteriaName = source.CriteriaName
+    );
+
+    DECLARE @LanApplyID INT = (
+        SELECT ApplyID FROM dbo.Apply WHERE CandidateID = @LanID AND JobPostID = @JavaJobID
+    );
+    IF NOT EXISTS (SELECT 1 FROM dbo.Interview WHERE ApplyID = @LanApplyID AND InterviewRound = 1)
+        INSERT INTO dbo.Interview
+            (ApplyID, BaremID, InterviewRound, InterviewDate, StartTime, EndTime,
+             InterviewType, Location, MeetingLink, Status, Note, CreatedBy)
+        VALUES
+            (@LanApplyID, @JavaBaremID, 1, DATEADD(DAY, 3, CAST(GETDATE() AS DATE)),
+             '09:00', '10:00', N'Offline', N'Hà Nội, Việt Nam', NULL,
+             N'Scheduled', N'Vòng phỏng vấn chuyên môn', @HRID);
+
+    DECLARE @InterviewID INT = (
+        SELECT InterviewID FROM dbo.Interview WHERE ApplyID = @LanApplyID AND InterviewRound = 1
+    );
+    IF NOT EXISTS (SELECT 1 FROM dbo.InterviewParticipant WHERE InterviewID = @InterviewID AND EmployeeID = @HRID)
+        INSERT INTO dbo.InterviewParticipant
+            (InterviewID, EmployeeID, ParticipantRole, IsLeadInterviewer)
+        VALUES (@InterviewID, @HRID, N'Interviewer', 1);
+    IF NOT EXISTS (SELECT 1 FROM dbo.InterviewParticipant WHERE InterviewID = @InterviewID AND EmployeeID = @ManagerID)
+        INSERT INTO dbo.InterviewParticipant
+            (InterviewID, EmployeeID, ParticipantRole, IsLeadInterviewer)
+        VALUES (@InterviewID, @ManagerID, N'Interviewer', 0);
+
+    IF NOT EXISTS (SELECT 1 FROM dbo.InterviewEvaluation WHERE InterviewID = @InterviewID AND InterviewerID = @HRID)
+        INSERT INTO dbo.InterviewEvaluation
+            (InterviewID, InterviewerID, TotalScore, Recommendation, Comment)
+        VALUES (@InterviewID, @HRID, 85, N'Pass', N'Ứng viên có kiến thức chuyên môn tốt.');
+
+    DECLARE @EvaluationID INT = (
+        SELECT EvaluationID FROM dbo.InterviewEvaluation
+        WHERE InterviewID = @InterviewID AND InterviewerID = @HRID
+    );
+    INSERT INTO dbo.EvaluationDetail (EvaluationID, CriteriaID, Score, Comment)
+    SELECT @EvaluationID, criteria.CriteriaID, source.Score, source.Comment
+    FROM (VALUES
+        (N'Kiến thức Java', CAST(27 AS DECIMAL(7,2)), N'Nắm chắc Java core'),
+        (N'Kinh nghiệm thực tế', CAST(17 AS DECIMAL(7,2)), N'Có kinh nghiệm dự án phù hợp'),
+        (N'Giải quyết vấn đề', CAST(18 AS DECIMAL(7,2)), N'Phân tích tình huống tốt'),
+        (N'Giao tiếp', CAST(12 AS DECIMAL(7,2)), N'Giao tiếp khá tốt'),
+        (N'Thái độ', CAST(11 AS DECIMAL(7,2)), N'Thái độ tích cực')
+    ) AS source(CriteriaName, Score, Comment)
+    JOIN dbo.BaremCriteria criteria
+      ON criteria.BaremID = @JavaBaremID AND criteria.CriteriaName = source.CriteriaName
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.EvaluationDetail existing
+        WHERE existing.EvaluationID = @EvaluationID AND existing.CriteriaID = criteria.CriteriaID
+    );
+
+    UPDATE application
+    SET Status = N'Interviewing'
+    FROM dbo.Apply application
+    WHERE application.FinalResult IS NULL
+      AND EXISTS (SELECT 1 FROM dbo.Interview interview WHERE interview.ApplyID = application.ApplyID)
+      AND application.Status IN (N'Pending', N'Shortlisted');
+
+    UPDATE application
+    SET Status = N'Shortlisted'
+    FROM dbo.Apply application
+    WHERE application.CandidateID = @TuanID
+      AND application.JobPostID = @DesignJobID
+      AND application.FinalResult IS NULL
+      AND application.Status = N'Pending'
+      AND NOT EXISTS (SELECT 1 FROM dbo.Interview interview WHERE interview.ApplyID = application.ApplyID);
+
+    IF NOT EXISTS (
+        SELECT 1 FROM dbo.Notification
+        WHERE ReceiverRole = N'Candidate' AND ReceiverID = @LanID
+          AND Message = N'Bạn đã được mời tham gia phỏng vấn vòng 1.'
+    )
+        INSERT INTO dbo.Notification (SenderRole, ReceiverRole, ReceiverID, Message)
+        VALUES (N'HR Staff', N'Candidate', @LanID, N'Bạn đã được mời tham gia phỏng vấn vòng 1.');
+
+    INSERT INTO dbo.ProfileDocumentType (DocumentName, Description, CreatedBy)
+    SELECT source.DocumentName, source.Description, @HRID
+    FROM (VALUES
+        (N'Căn cước công dân', N'Ảnh hoặc bản scan rõ hai mặt của CCCD'),
+        (N'Bằng tốt nghiệp', N'Bằng cấp cao nhất liên quan đến vị trí công việc'),
+        (N'Giấy khám sức khỏe', N'Giấy khám sức khỏe còn hiệu lực'),
+        (N'Thông tin tài khoản ngân hàng', N'Tài liệu xác nhận tài khoản nhận lương')
+    ) AS source(DocumentName, Description)
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.ProfileDocumentType existing
+        WHERE existing.DocumentName = source.DocumentName
+    );
+
+    INSERT INTO dbo.EmployeeProfileDocument
+        (EmployeeID, DocumentTypeID, IsRequired, DueDate, CreatedBy)
+    SELECT @EmployeeID, documentType.DocumentTypeID, source.IsRequired,
+           CASE WHEN source.DueDays IS NULL THEN NULL
+                ELSE DATEADD(DAY, source.DueDays, CAST(GETDATE() AS DATE)) END,
+           @HRID
+    FROM (VALUES
+        (N'Căn cước công dân', CAST(1 AS BIT), CAST(7 AS INT)),
+        (N'Bằng tốt nghiệp', CAST(1 AS BIT), CAST(14 AS INT)),
+        (N'Giấy khám sức khỏe', CAST(1 AS BIT), CAST(14 AS INT)),
+        (N'Thông tin tài khoản ngân hàng', CAST(0 AS BIT), CAST(NULL AS INT))
+    ) AS source(DocumentName, IsRequired, DueDays)
+    JOIN dbo.ProfileDocumentType documentType
+      ON documentType.DocumentName = source.DocumentName
+    WHERE NOT EXISTS (
+        SELECT 1 FROM dbo.EmployeeProfileDocument existing
+        WHERE existing.EmployeeID = @EmployeeID
+          AND existing.DocumentTypeID = documentType.DocumentTypeID
+    );
+
+    INSERT INTO dbo.ProfileDocumentHistory
+        (EmployeeDocumentID, Action, FromStatus, ToStatus, Comment, ActionBy)
+    SELECT document.EmployeeDocumentID, 'Assigned', NULL, 'Pending',
+           N'Yêu cầu hồ sơ mẫu được khởi tạo cùng hệ thống', @HRID
+    FROM dbo.EmployeeProfileDocument document
+    WHERE document.EmployeeID = @EmployeeID
+      AND NOT EXISTS (
+          SELECT 1 FROM dbo.ProfileDocumentHistory history
+          WHERE history.EmployeeDocumentID = document.EmployeeDocumentID
+      );
+
+    COMMIT TRANSACTION;
+END TRY
+BEGIN CATCH
+    IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+    THROW;
+END CATCH;
 GO
-
 
 /* ============================================================
-   20. PASSWORD RESET TOKEN
+   VERIFICATION SUMMARY
    ============================================================ */
 
-CREATE TABLE PasswordResetToken
-(
-    Id BIGINT IDENTITY(1,1) PRIMARY KEY,
-
-    Email NVARCHAR(255) NOT NULL,
-
-    TokenHash NVARCHAR(255) NOT NULL,
-
-    CreatedAt DATETIME2 NOT NULL
-        CONSTRAINT DF_PasswordReset_CreatedAt
-        DEFAULT SYSUTCDATETIME(),
-
-    ExpiresAt DATETIME2 NOT NULL,
-
-    Used BIT NOT NULL
-        CONSTRAINT DF_PasswordReset_Used
-        DEFAULT 0,
-
-    Attempts INT NOT NULL
-        CONSTRAINT DF_PasswordReset_Attempts
-        DEFAULT 0,
-
-    Role NVARCHAR(50) NOT NULL,
-
-    CONSTRAINT CK_PasswordReset_Attempts
-        CHECK (Attempts >= 0)
-);
+SELECT N'Database' AS Item, DB_NAME() AS Value
+UNION ALL SELECT N'Roles', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.Roles
+UNION ALL SELECT N'Candidates', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.Candidate
+UNION ALL SELECT N'Employees', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.Employee
+UNION ALL SELECT N'Job posts', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.JobPost
+UNION ALL SELECT N'Applications', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.Apply
+UNION ALL SELECT N'Interviews', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.Interview
+UNION ALL SELECT N'Profile document types', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.ProfileDocumentType
+UNION ALL SELECT N'Employee profile documents', CAST(COUNT(*) AS NVARCHAR(30)) FROM dbo.EmployeeProfileDocument;
 GO
 
-CREATE INDEX IX_PasswordResetToken_Email
-ON PasswordResetToken(Email);
+SELECT candidate.Email, candidate.CandidateName, role.RoleName, employee.EmployeeCode
+FROM dbo.Employee employee
+JOIN dbo.Candidate candidate ON employee.CandidateID = candidate.CandidateID
+JOIN dbo.Roles role ON employee.RoleID = role.RoleID
+WHERE candidate.Email IN (N'nam@gmail.com', N'hoa@gmail.com', N'minh@gmail.com', N'an@gmail.com')
+ORDER BY employee.EmployeeCode;
 GO
 
-
-/* ============================================================
-   21. INDEX
-   ============================================================ */
-
-CREATE INDEX IX_Employee_Role
-ON Employee(RoleID);
-
-CREATE INDEX IX_Employee_Department
-ON Employee(Department);
-
-CREATE INDEX IX_EmployeePositionHistory_Employee
-ON EmployeePositionHistory(EmployeeID);
-
-CREATE INDEX IX_EmployeePositionHistory_Role
-ON EmployeePositionHistory(RoleID);
-
-CREATE INDEX IX_JobPost_Visible
-ON JobPost(Visible);
-
-CREATE INDEX IX_JobPost_Deadline
-ON JobPost(Deadline);
-
-CREATE INDEX IX_Apply_Candidate
-ON Apply(CandidateID);
-
-CREATE INDEX IX_Apply_JobPost
-ON Apply(JobPostID);
-
-CREATE INDEX IX_Apply_Status
-ON Apply(Status);
-
-CREATE INDEX IX_Interview_Date
-ON Interview(InterviewDate, StartTime);
-
-CREATE INDEX IX_Interview_Status
-ON Interview(Status);
-
-CREATE INDEX IX_InterviewParticipant_Employee
-ON InterviewParticipant(EmployeeID, InterviewID);
-
-CREATE INDEX IX_InterviewEvaluation_Interviewer
-ON InterviewEvaluation(InterviewerID);
-
-CREATE INDEX IX_Potential_JobPost
-ON Potential(JobPostID);
-GO
-
-
-/* ============================================================
-   22. SAMPLE ADMIN
-   ============================================================ */
-
-INSERT INTO Admin
-(
-    Username,
-    PasswordHash
-)
-VALUES
-(
-    N'admin',
-    N'123456'
-);
-GO
-
-
-/* ============================================================
-   23. ADMIN ROLE
-   ============================================================ */
-
-INSERT INTO Role_Table
-(
-    AdminID,
-    RoleID
-)
-SELECT
-    1,
-    RoleID
-FROM Roles
-WHERE RoleName = N'Admin';
-GO
-
-
-/* ============================================================
-   24. SAMPLE CANDIDATE
-   ============================================================ */
-
-INSERT INTO Candidate
-(
-    CandidateName,
-    Address,
-    Email,
-    PhoneNumber,
-    Nationality,
-    PasswordHash,
-    Avatar
-)
-VALUES
-
-(
-    N'Nguyễn Văn Nam',
-    N'Hà Nội',
-    N'nam@gmail.com',
-    '0911111111',
-    N'Việt Nam',
-    N'123456',
-    N'avatar1.png'
-),
-
-(
-    N'Trần Thị Hoa',
-    N'Hồ Chí Minh',
-    N'hoa@gmail.com',
-    '0912222222',
-    N'Việt Nam',
-    N'123456',
-    N'avatar2.png'
-),
-
-(
-    N'Lê Văn Minh',
-    N'Đà Nẵng',
-    N'minh@gmail.com',
-    '0913333333',
-    N'Việt Nam',
-    N'123456',
-    N'avatar3.png'
-),
-
-(
-    N'Phạm Thị Lan',
-    N'Hải Phòng',
-    N'lan@gmail.com',
-    '0914444444',
-    N'Việt Nam',
-    N'123456',
-    N'avatar4.png'
-),
-
-(
-    N'Hoàng Văn Tuấn',
-    N'Cần Thơ',
-    N'tuan@gmail.com',
-    '0915555555',
-    N'Việt Nam',
-    N'123456',
-    N'avatar5.png'
-);
-GO
-
-
-/* ============================================================
-   25. CANDIDATE -> EMPLOYEE
-   Candidate #1 được tuyển thành HR Staff
-   Candidate #2 được tuyển thành HR Staff
-   Candidate #3 được tuyển thành Manager
-
-   Candidate #4, #5 vẫn là Candidate
-   ============================================================ */
-
-INSERT INTO Employee
-(
-    CandidateID,
-    RoleID,
-    EmployeeCode,
-    HireDate,
-    Department,
-    Position,
-    Salary
-)
-VALUES
-
-(
-    1,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'HR Staff'
-    ),
-    'EMP001',
-    CAST(GETDATE() AS DATE),
-    N'Human Resources',
-    N'HR Staff',
-    1500
-),
-
-(
-    2,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'HR Staff'
-    ),
-    'EMP002',
-    CAST(GETDATE() AS DATE),
-    N'Human Resources',
-    N'HR Staff',
-    1400
-),
-
-(
-    3,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'Manager'
-    ),
-    'EMP003',
-    CAST(GETDATE() AS DATE),
-    N'IT',
-    N'Manager',
-    3000
-);
-GO
-
-
-/* ============================================================
-   26. EMPLOYEE POSITION HISTORY
-   ============================================================ */
-
-INSERT INTO EmployeePositionHistory
-(
-    EmployeeID,
-    RoleID,
-    Position,
-    Department,
-    StartDate,
-    EndDate,
-    Note
-)
-VALUES
-
-(
-    1,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'HR Staff'
-    ),
-    N'HR Staff',
-    N'Human Resources',
-    CAST(GETDATE() AS DATE),
-    NULL,
-    N'Được tuyển dụng từ Candidate'
-),
-
-(
-    2,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'HR Staff'
-    ),
-    N'HR Staff',
-    N'Human Resources',
-    CAST(GETDATE() AS DATE),
-    NULL,
-    N'Được tuyển dụng từ Candidate'
-),
-
-(
-    3,
-    (
-        SELECT RoleID
-        FROM Roles
-        WHERE RoleName = N'Manager'
-    ),
-    N'Manager',
-    N'IT',
-    CAST(GETDATE() AS DATE),
-    NULL,
-    N'Được tuyển dụng từ Candidate'
-);
-GO
-
-
-/* ============================================================
-   27. SAMPLE CV
-   ============================================================ */
-
-INSERT INTO CV
-(
-    CandidateID,
-    FullName,
-    Address,
-    Email,
-    Position,
-    NumberExp,
-    Education,
-    Field,
-    CurrentSalary,
-    Birthday,
-    Nationality,
-    Gender,
-    FileData
-)
-VALUES
-
-(
-    1,
-    N'Nguyễn Văn Nam',
-    N'Hà Nội',
-    N'nam@gmail.com',
-    N'Java Developer',
-    2,
-    N'Đại học Bách Khoa',
-    N'Công nghệ thông tin',
-    1500,
-    '1998-05-12',
-    N'Việt Nam',
-    N'Nam',
-    N'cv_nam.pdf'
-),
-
-(
-    2,
-    N'Trần Thị Hoa',
-    N'Hồ Chí Minh',
-    N'hoa@gmail.com',
-    N'HR Staff',
-    3,
-    N'Đại học Kinh tế',
-    N'Quản trị nhân sự',
-    1200,
-    '1996-09-20',
-    N'Việt Nam',
-    N'Nữ',
-    N'cv_hoa.pdf'
-),
-
-(
-    3,
-    N'Lê Văn Minh',
-    N'Đà Nẵng',
-    N'minh@gmail.com',
-    N'Backend Developer',
-    3,
-    N'Đại học Bách Khoa',
-    N'Công nghệ thông tin',
-    1800,
-    '1997-12-01',
-    N'Việt Nam',
-    N'Nam',
-    N'cv_minh.pdf'
-),
-
-(
-    4,
-    N'Phạm Thị Lan',
-    N'Hải Phòng',
-    N'lan@gmail.com',
-    N'Accountant',
-    4,
-    N'Đại học Thương mại',
-    N'Tài chính',
-    1300,
-    '1994-07-07',
-    N'Việt Nam',
-    N'Nữ',
-    N'cv_lan.pdf'
-),
-
-(
-    5,
-    N'Hoàng Văn Tuấn',
-    N'Cần Thơ',
-    N'tuan@gmail.com',
-    N'UI/UX Designer',
-    2,
-    N'Đại học Kiến trúc',
-    N'Thiết kế',
-    1100,
-    '1999-03-15',
-    N'Việt Nam',
-    N'Nam',
-    N'cv_tuan.pdf'
-);
-GO
-
-
-/* ============================================================
-   28. SAMPLE JOB POST
-   CreatedBy = EmployeeID
-   ============================================================ */
-
-INSERT INTO JobPost
-(
-    Title,
-    Description,
-    Category,
-    Position,
-    Location,
-    OfferMin,
-    OfferMax,
-    NumberExp,
-    Visible,
-    TypeJob,
-    Deadline,
-    CreatedBy
-)
-VALUES
-
-(
-    N'Tuyển Java Developer',
-    N'Phát triển và bảo trì hệ thống Java.',
-    N'IT',
-    N'Java Developer',
-    N'Hà Nội, Việt Nam',
-    1500,
-    2500,
-    2,
-    1,
-    N'Full-time',
-    DATEADD(DAY, 30, CAST(GETDATE() AS DATE)),
-    1
-),
-
-(
-    N'Tuyển HR Staff',
-    N'Thực hiện công tác tuyển dụng và quản lý hồ sơ nhân sự.',
-    N'Human Resources',
-    N'HR Staff',
-    N'Hà Nội, Việt Nam',
-    1000,
-    1800,
-    1,
-    1,
-    N'Full-time',
-    DATEADD(DAY, 30, CAST(GETDATE() AS DATE)),
-    2
-),
-
-(
-    N'Tuyển Backend Developer',
-    N'Phát triển API và hệ thống backend.',
-    N'IT',
-    N'Backend Developer',
-    N'Hà Nội, Việt Nam',
-    1800,
-    3000,
-    2,
-    1,
-    N'Full-time',
-    DATEADD(DAY, 30, CAST(GETDATE() AS DATE)),
-    1
-),
-
-(
-    N'Tuyển Accountant',
-    N'Quản lý và kiểm tra các nghiệp vụ kế toán.',
-    N'Finance',
-    N'Accountant',
-    N'Hà Nội, Việt Nam',
-    1000,
-    1700,
-    2,
-    1,
-    N'Full-time',
-    DATEADD(DAY, 30, CAST(GETDATE() AS DATE)),
-    2
-),
-
-(
-    N'Tuyển UI/UX Designer',
-    N'Thiết kế giao diện và trải nghiệm người dùng.',
-    N'Design',
-    N'UI/UX Designer',
-    N'Hà Nội, Việt Nam',
-    1000,
-    2000,
-    1,
-    1,
-    N'Full-time',
-    DATEADD(DAY, 30, CAST(GETDATE() AS DATE)),
-    1
-);
-GO
-
-
-/* ============================================================
-   29. SAMPLE APPLY
-   ============================================================ */
-
-INSERT INTO Apply
-(
-    JobPostID,
-    CandidateID,
-    CVID,
-    Status,
-    Note
-)
-VALUES
-
-(
-    1,
-    1,
-    1,
-    N'Pending',
-    N'Ứng tuyển Java Developer'
-),
-
-(
-    2,
-    2,
-    2,
-    N'Pending',
-    N'Ứng tuyển HR Staff'
-),
-
-(
-    3,
-    3,
-    3,
-    N'Pending',
-    N'Ứng tuyển Backend Developer'
-),
-
-(
-    4,
-    4,
-    4,
-    N'Pending',
-    N'Ứng tuyển Accountant'
-),
-
-(
-    5,
-    5,
-    5,
-    N'Pending',
-    N'Ứng tuyển UI/UX Designer'
-);
-GO
-
-
-/* ============================================================
-   30. SAMPLE SAVED JOB
-   ============================================================ */
-
-INSERT INTO SavedJob
-(
-    CandidateID,
-    JobPostID
-)
-VALUES
-(1, 3),
-(2, 1),
-(3, 1),
-(4, 4),
-(5, 5);
-GO
-
-
-/* ============================================================
-   31. SAMPLE POTENTIAL
-   ============================================================ */
-
-INSERT INTO Potential
-(
-    CVID,
-    JobPostID,
-    CreatedBy,
-    Note
-)
-VALUES
-
-(
-    1,
-    1,
-    1,
-    N'CV phù hợp với vị trí Java Developer'
-),
-
-(
-    3,
-    3,
-    2,
-    N'Ứng viên có kinh nghiệm Backend tốt'
-);
-GO
-
-
-/* ============================================================
-   32. CREATE INTERVIEW BAREM
-   CreatedBy = Employee
-   ============================================================ */
-
-INSERT INTO InterviewBarem
-(
-    JobPostID,
-    BaremName,
-    Description,
-    TotalScore,
-    CreatedBy
-)
-VALUES
-(
-    1,
-    N'Barem Java Developer',
-    N'Barem đánh giá ứng viên Java Developer',
-    100,
-    1
-);
-GO
-
-
-/* ============================================================
-   33. BAREM CRITERIA
-   ============================================================ */
-
-INSERT INTO BaremCriteria
-(
-    BaremID,
-    CriteriaName,
-    Description,
-    MaxScore,
-    Weight,
-    DisplayOrder
-)
-VALUES
-
-(
-    1,
-    N'Kiến thức chuyên môn',
-    N'Đánh giá kiến thức Java và lập trình',
-    30,
-    30,
-    1
-),
-
-(
-    1,
-    N'Kinh nghiệm',
-    N'Đánh giá kinh nghiệm thực tế',
-    20,
-    20,
-    2
-),
-
-(
-    1,
-    N'Giải quyết vấn đề',
-    N'Khả năng phân tích và xử lý vấn đề',
-    20,
-    20,
-    3
-),
-
-(
-    1,
-    N'Giao tiếp',
-    N'Khả năng giao tiếp và trình bày',
-    15,
-    15,
-    4
-),
-
-(
-    1,
-    N'Thái độ',
-    N'Tinh thần làm việc và thái độ',
-    15,
-    15,
-    5
-);
-GO
-
-
-/* ============================================================
-   34. CREATE INTERVIEW
-   ============================================================ */
-
-INSERT INTO Interview
-(
-    ApplyID,
-    BaremID,
-    InterviewRound,
-    InterviewDate,
-    StartTime,
-    EndTime,
-    InterviewType,
-    Location,
-    MeetingLink,
-    Status,
-    Note,
-    CreatedBy
-)
-VALUES
-(
-    1,
-    1,
-    1,
-    DATEADD(DAY, 3, CAST(GETDATE() AS DATE)),
-    '09:00',
-    '10:00',
-    N'Offline',
-    N'Hà Nội, Việt Nam',
-    NULL,
-    N'Scheduled',
-    N'Vòng phỏng vấn chuyên môn',
-    1
-);
-GO
-
-
-/* ============================================================
-   35. INTERVIEW PARTICIPANTS
-   Employee #1 = HR
-   Employee #3 = Manager
-   ============================================================ */
-
-INSERT INTO InterviewParticipant
-(
-    InterviewID,
-    EmployeeID,
-    ParticipantRole,
-    IsLeadInterviewer
-)
-VALUES
-
-(
-    1,
-    1,
-    N'HR',
-    1
-),
-
-(
-    1,
-    3,
-    N'Manager',
-    0
-);
-GO
-
-
-/* ============================================================
-   36. INTERVIEW EVALUATION
-   ============================================================ */
-
-INSERT INTO InterviewEvaluation
-(
-    InterviewID,
-    InterviewerID,
-    TotalScore,
-    Recommendation,
-    Comment
-)
-VALUES
-(
-    1,
-    1,
-    85,
-    N'Pass',
-    N'Ứng viên có kiến thức chuyên môn tốt.'
-);
-GO
-
-
-/* ============================================================
-   37. EVALUATION DETAIL
-   ============================================================ */
-
-INSERT INTO EvaluationDetail
-(
-    EvaluationID,
-    CriteriaID,
-    Score,
-    Comment
-)
-VALUES
-
-(
-    1,
-    1,
-    27,
-    N'Kiến thức Java tốt'
-),
-
-(
-    1,
-    2,
-    17,
-    N'Có 2 năm kinh nghiệm'
-),
-
-(
-    1,
-    3,
-    18,
-    N'Khả năng giải quyết vấn đề tốt'
-),
-
-(
-    1,
-    4,
-    12,
-    N'Giao tiếp khá tốt'
-),
-
-(
-    1,
-    5,
-    11,
-    N'Thái độ tích cực'
-);
-GO
-
-
-/* ============================================================
-   38. SAMPLE NOTIFICATION
-   ============================================================ */
-
-INSERT INTO Notification
-(
-    SenderRole,
-    ReceiverRole,
-    ReceiverID,
-    Message
-)
-VALUES
-
-(
-    N'HR Staff',
-    N'Candidate',
-    4,
-    N'Bạn đã được mời tham gia phỏng vấn vòng 1.'
-),
-
-(
-    N'HR Staff',
-    N'Manager',
-    3,
-    N'Có lịch phỏng vấn Java Developer cần tham gia.'
-);
-GO
-
-
-/* ============================================================
-   39. PASSWORD RESET TOKEN
-   ============================================================ */
-
-INSERT INTO PasswordResetToken
-(
-    Email,
-    TokenHash,
-    ExpiresAt,
-    Role
-)
-VALUES
-(
-    N'nam@gmail.com',
-    N'example_token_hash',
-    DATEADD(MINUTE, 30, SYSUTCDATETIME()),
-    N'Candidate'
-);
-GO
-
-
-/* ============================================================
-   40. TEST
-   ============================================================ */
-
-
-/* ---------------- ROLES ---------------- */
-
-SELECT *
-FROM Roles;
-
-
-/* ---------------- CANDIDATE ---------------- */
-
-SELECT *
-FROM Candidate;
-
-
-/* ---------------- EMPLOYEE ---------------- */
-
-SELECT
-    e.EmployeeID,
-    e.EmployeeCode,
-    c.CandidateID,
-    c.CandidateName,
-    c.Email,
-    r.RoleName,
-    e.Department,
-    e.Position,
-    e.HireDate,
-    e.Salary,
-    e.IsActive
-FROM Employee e
-JOIN Candidate c
-    ON e.CandidateID = c.CandidateID
-JOIN Roles r
-    ON e.RoleID = r.RoleID;
-
-
-/* ---------------- CANDIDATE -> EMPLOYEE -> ROLE ---------------- */
-
-SELECT
-    c.CandidateID,
-    c.CandidateName,
-    e.EmployeeID,
-    e.EmployeeCode,
-    r.RoleName,
-    e.Position,
-    e.Department,
-    e.HireDate
-FROM Candidate c
-LEFT JOIN Employee e
-    ON c.CandidateID = e.CandidateID
-LEFT JOIN Roles r
-    ON e.RoleID = r.RoleID
-ORDER BY c.CandidateID;
-
-
-/* ---------------- EMPLOYEE POSITION HISTORY ---------------- */
-
-SELECT
-    eph.HistoryID,
-    e.EmployeeCode,
-    c.CandidateName,
-    r.RoleName,
-    eph.Position,
-    eph.Department,
-    eph.StartDate,
-    eph.EndDate,
-    eph.Note
-FROM EmployeePositionHistory eph
-JOIN Employee e
-    ON eph.EmployeeID = e.EmployeeID
-JOIN Candidate c
-    ON e.CandidateID = c.CandidateID
-JOIN Roles r
-    ON eph.RoleID = r.RoleID
-ORDER BY
-    e.EmployeeID,
-    eph.StartDate;
-
-
-/* ---------------- JOB POST ---------------- */
-
-SELECT
-    jp.JobPostID,
-    jp.Title,
-    jp.Category,
-    jp.Position,
-    jp.Location,
-    jp.OfferMin,
-    jp.OfferMax,
-    jp.NumberExp,
-    jp.TypeJob,
-    jp.Deadline,
-    jp.Visible,
-    e.EmployeeCode AS CreatedByEmployee,
-    c.CandidateName AS CreatedByName
-FROM JobPost jp
-LEFT JOIN Employee e
-    ON jp.CreatedBy = e.EmployeeID
-LEFT JOIN Candidate c
-    ON e.CandidateID = c.CandidateID;
-
-
-/* ---------------- APPLICATION ---------------- */
-
-SELECT
-    a.ApplyID,
-    c.CandidateName,
-    jp.Title AS JobTitle,
-    cv.Position AS CVPosition,
-    a.Status,
-    a.DayCreate
-FROM Apply a
-JOIN Candidate c
-    ON a.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON a.JobPostID = jp.JobPostID
-JOIN CV cv
-    ON a.CVID = cv.CVID;
-
-
-/* ---------------- SAVED JOB ---------------- */
-
-SELECT
-    sj.SavedJobID,
-    c.CandidateName,
-    jp.Title
-FROM SavedJob sj
-JOIN Candidate c
-    ON sj.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON sj.JobPostID = jp.JobPostID;
-
-
-/* ---------------- POTENTIAL ---------------- */
-
-SELECT
-    p.PotentialID,
-    c.CandidateName,
-    jp.Title AS JobTitle,
-    e.EmployeeCode AS CreatedByEmployee,
-    p.Note,
-    p.CreatedAt
-FROM Potential p
-JOIN CV cv
-    ON p.CVID = cv.CVID
-JOIN Candidate c
-    ON cv.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON p.JobPostID = jp.JobPostID
-LEFT JOIN Employee e
-    ON p.CreatedBy = e.EmployeeID;
-
-
-/* ---------------- BAREM ---------------- */
-
-SELECT
-    ib.BaremID,
-    jp.Title AS JobTitle,
-    ib.BaremName,
-    ib.TotalScore,
-    e.EmployeeCode AS CreatedByEmployee
-FROM InterviewBarem ib
-JOIN JobPost jp
-    ON ib.JobPostID = jp.JobPostID
-JOIN Employee e
-    ON ib.CreatedBy = e.EmployeeID;
-
-
-/* ---------------- BAREM CRITERIA ---------------- */
-
-SELECT
-    bc.CriteriaID,
-    ib.BaremName,
-    bc.CriteriaName,
-    bc.MaxScore,
-    bc.Weight,
-    bc.DisplayOrder
-FROM BaremCriteria bc
-JOIN InterviewBarem ib
-    ON bc.BaremID = ib.BaremID
-ORDER BY
-    bc.BaremID,
-    bc.DisplayOrder;
-
-
-/* ---------------- INTERVIEW ---------------- */
-
-SELECT
-    i.InterviewID,
-    c.CandidateName,
-    jp.Title AS JobTitle,
-    i.InterviewRound,
-    i.InterviewDate,
-    i.StartTime,
-    i.EndTime,
-    i.InterviewType,
-    i.Location,
-    i.Status
-FROM Interview i
-JOIN Apply a
-    ON i.ApplyID = a.ApplyID
-JOIN Candidate c
-    ON a.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON a.JobPostID = jp.JobPostID
-ORDER BY
-    i.InterviewDate,
-    i.StartTime;
-
-
-/* ---------------- INTERVIEW PARTICIPANTS ---------------- */
-
-SELECT
-    i.InterviewID,
-    c.CandidateName,
-    jp.Title AS JobTitle,
-    e.EmployeeCode,
-    c2.CandidateName AS EmployeeName,
-    r.RoleName,
-    ip.ParticipantRole,
-    ip.IsLeadInterviewer
-FROM InterviewParticipant ip
-JOIN Interview i
-    ON ip.InterviewID = i.InterviewID
-JOIN Employee e
-    ON ip.EmployeeID = e.EmployeeID
-JOIN Candidate c2
-    ON e.CandidateID = c2.CandidateID
-JOIN Roles r
-    ON e.RoleID = r.RoleID
-JOIN Apply a
-    ON i.ApplyID = a.ApplyID
-JOIN Candidate c
-    ON a.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON a.JobPostID = jp.JobPostID;
-
-
-/* ---------------- EVALUATION ---------------- */
-
-SELECT
-    ie.EvaluationID,
-    c.CandidateName,
-    jp.Title AS JobTitle,
-    e.EmployeeCode AS InterviewerCode,
-    c2.CandidateName AS Interviewer,
-    r.RoleName,
-    ie.TotalScore,
-    ie.Recommendation,
-    ie.Comment
-FROM InterviewEvaluation ie
-JOIN Interview i
-    ON ie.InterviewID = i.InterviewID
-JOIN Employee e
-    ON ie.InterviewerID = e.EmployeeID
-JOIN Candidate c2
-    ON e.CandidateID = c2.CandidateID
-JOIN Roles r
-    ON e.RoleID = r.RoleID
-JOIN Apply a
-    ON i.ApplyID = a.ApplyID
-JOIN Candidate c
-    ON a.CandidateID = c.CandidateID
-JOIN JobPost jp
-    ON a.JobPostID = jp.JobPostID;
-
-
-/* ---------------- EVALUATION DETAIL ---------------- */
-
-SELECT
-    ie.EvaluationID,
-    c.CandidateName,
-    c2.CandidateName AS Interviewer,
-    bc.CriteriaName,
-    bc.MaxScore,
-    bc.Weight,
-    ed.Score,
-    ed.Comment
-FROM EvaluationDetail ed
-JOIN InterviewEvaluation ie
-    ON ed.EvaluationID = ie.EvaluationID
-JOIN BaremCriteria bc
-    ON ed.CriteriaID = bc.CriteriaID
-JOIN Interview i
-    ON ie.InterviewID = i.InterviewID
-JOIN Apply a
-    ON i.ApplyID = a.ApplyID
-JOIN Candidate c
-    ON a.CandidateID = c.CandidateID
-JOIN Employee e
-    ON ie.InterviewerID = e.EmployeeID
-JOIN Candidate c2
-    ON e.CandidateID = c2.CandidateID
-ORDER BY
-    ie.EvaluationID,
-    bc.DisplayOrder;
+PRINT N'SWP391 database initialization completed successfully.';
+PRINT N'Test password for seeded employee accounts: 123456';
 GO

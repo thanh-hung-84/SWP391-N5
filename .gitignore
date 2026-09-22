@@ -1,24 +1,43 @@
-# Build
-/build/
-/dist/
-/target/
-/nbbuild/
-/nbdist/
-
-# Java
+# Java and generated build output
+build/
+dist/
+target/
+out/
+bin/
+nbbuild/
+nbdist/
 *.class
+*.war
+*.ear
 
-# IDE
+# NetBeans machine-specific files
+**/nbproject/private/
+
+# IDE settings
 .idea/
 .vscode/
+.settings/
 *.iml
+.classpath
+.project
 
-# OS
+# OS metadata
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Logs
+# Logs and temporary files
 *.log
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
 
-# Environment / secrets
+# Environment files and local secrets
 .env
+.env.*
+!.env.example
+
+# Libraries belong in lib/, not at the repository root
+/*.jar
