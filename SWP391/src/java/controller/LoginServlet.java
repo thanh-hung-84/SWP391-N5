@@ -43,25 +43,35 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
+        LoginDAO.UserSession userSession;
         LoginDAO dao = new LoginDAO();
-        LoginDAO.UserSession userSession = dao.loginUser(email.trim(), password);
-        dao.closeConnection();
+        try {
+            userSession = dao.loginUser(email.trim(), password);
+        } finally {
+            dao.closeConnection();
+        }
 
         if (userSession != null) {
-            HttpSession session = request.getSession();
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) oldSession.invalidate();
+
+            HttpSession session = request.getSession(true);
             session.setAttribute("staffId", userSession.staffId);
             session.setAttribute("staffName", userSession.fullName);
             session.setAttribute("email", userSession.email);
             session.setAttribute("roleId", userSession.roleId);
             session.setAttribute("roleName", userSession.roleName);
 
-            response.sendRedirect(request.getContextPath() + "/interview-schedule");
+            if ("HR Staff".equals(userSession.roleName) || "Manager".equals(userSession.roleName)) {
+                response.sendRedirect(request.getContextPath() + "/interview-schedule");
+            } else {
+                response.sendRedirect(request.getContextPath() + "/my-profile-documents");
+            }
         } else {
             request.setAttribute("error", "Email hoặc mật khẩu không chính xác.");
             request.setAttribute("emailInput", email.trim());
             request.getRequestDispatcher("/login.jsp").forward(request, response);
         }
-        dao.closeConnection();
     }
 
     // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
