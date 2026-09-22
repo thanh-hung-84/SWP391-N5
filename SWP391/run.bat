@@ -6,10 +6,6 @@ if "%CATALINA_HOME%"=="" (
     exit /b 1
 )
 
-if "%SWP391_DB_PASSWORD%"=="" (
-    echo Warning: SWP391_DB_PASSWORD is not set in this terminal.
-)
-
 call "%CATALINA_HOME%\bin\startup.bat"
 if errorlevel 1 exit /b %errorlevel%
 
