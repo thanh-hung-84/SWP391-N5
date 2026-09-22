@@ -43,15 +43,37 @@ public class LoginServlet extends HttpServlet {
             return;
         }
 
+        LoginDAO.UserSession userSession;
         LoginDAO dao = new LoginDAO();
-        boolean valid = dao.loginCandidate(email.trim(), password);
-        dao.closeConnection();
+        try {
+            userSession = dao.loginUser(email.trim(), password);
+        } finally {
+            dao.closeConnection();
+        }
 
-        if (valid) {
-            HttpSession session = request.getSession();
-            session.setAttribute("email", email.trim());
-            session.setAttribute("role", "Candidate");
-            response.sendRedirect(request.getContextPath() + "/home");
+        if (userSession != null) {
+            HttpSession oldSession = request.getSession(false);
+            if (oldSession != null) oldSession.invalidate();
+
+            HttpSession session = request.getSession(true);
+            session.setAttribute("candidateId", userSession.candidateId);
+            session.setAttribute("email", userSession.email);
+            session.setAttribute("fullName", userSession.fullName);
+            session.setAttribute("role", userSession.roleName);
+            session.setAttribute("roleName", userSession.roleName);
+            if (userSession.staffId != null) {
+                session.setAttribute("staffId", userSession.staffId);
+                session.setAttribute("staffName", userSession.fullName);
+                session.setAttribute("roleId", userSession.roleId);
+            }
+
+            if ("HR Staff".equals(userSession.roleName) || "Manager".equals(userSession.roleName)) {
+                response.sendRedirect(request.getContextPath() + "/employee-profiles");
+            } else if (userSession.staffId != null) {
+                response.sendRedirect(request.getContextPath() + "/my-profile-documents");
+            } else {
+                response.sendRedirect(request.getContextPath() + "/home");
+            }
         } else {
             request.setAttribute("error", "Email hoặc mật khẩu không chính xác.");
             request.setAttribute("username", email.trim());
