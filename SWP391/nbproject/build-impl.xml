@@ -985,7 +985,6 @@ exists or setup the property manually. For example like this:
         <copyfiles files="${file.reference.mssql-jdbc-13.4.0.jre11.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
         <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-2.0.0.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
         <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-api-2.0.0.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
-        
         <copyfiles files="${file.reference.javax.activation-1.2.0.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
         <copyfiles files="${file.reference.javax.mail-1.6.2.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
         <copyfiles files="${file.reference.javax.mail-api-1.6.2.jar}" iftldtodir="${build.web.dir}/WEB-INF" todir="${dist.ear.dir}/lib"/>
@@ -999,7 +998,6 @@ exists or setup the property manually. For example like this:
         <copyfiles files="${file.reference.mssql-jdbc-13.4.0.jre11.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
         <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-2.0.0.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
         <copyfiles files="${file.reference.jakarta.servlet.jsp.jstl-api-2.0.0.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
-        
         <copyfiles files="${file.reference.javax.activation-1.2.0.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
         <copyfiles files="${file.reference.javax.mail-1.6.2.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
         <copyfiles files="${file.reference.javax.mail-api-1.6.2.jar}" todir="${build.web.dir}/WEB-INF/lib"/>
